@@ -57,9 +57,14 @@ export function Landing({ onGetStarted }: Props) {
         <span className="text-[11px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--text)" }}>
           WorthyApply
         </span>
-        <span className="text-[10px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
-          v1.0
-        </span>
+        <div className="flex items-center gap-4">
+          <a href="/builder" className="text-[11px] font-medium transition-opacity hover:opacity-70" style={{ color: "var(--text-muted)" }}>
+            Resume Builder
+          </a>
+          <span className="text-[10px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+            v1.0
+          </span>
+        </div>
       </header>
 
       {/* Main — asymmetric */}
