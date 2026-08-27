@@ -1,0 +1,29 @@
+# Environment & secrets
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Test / dev files — not part of the product
+main.ipynb
+DEPLOYMENT.md
+user_profile.txt
+job_description.txt
+job.txt
+hello.md
+Recent_resume.pdf
