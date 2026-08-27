@@ -2,186 +2,168 @@
 
 **Make every application worth submitting.**
 
-A portfolio-quality web application that analyzes job descriptions, evaluates resume fit, and provides truthful resume optimization suggestions — powered by a three-agent LangChain pipeline running on Groq.
+[Live Demo](https://worthyapply-sigma.vercel.app/) · [Backend API](https://worthyapply.onrender.com/api/health)
 
-## Problem Statement
+---
 
-Job seekers spend hours tailoring resumes for each application without knowing if they're a good fit. This tool automates the analysis: upload your resume, paste a job description, and instantly understand your match score, skill gaps, and exactly which resume bullets to improve.
+## What is WorthyApply?
+
+WorthyApply is an AI-powered application intelligence platform that helps job seekers understand their fit for a role and optimize their resume — before they hit submit.
+
+Upload your resume. Paste a job description. In seconds, get:
+
+- A structured breakdown of what the role requires
+- A realistic match score based on evidence in your resume
+- A clear view of your matching skills vs. skill gaps
+- Specific, truthful resume bullet improvements you can copy and use
+
+---
+
+## How It Works
+
+```
+Resume (PDF)  +  Job Description
+              │
+              ▼
+┌──────────────────────────────┐
+│     Agent 1: Job Analyzer    │  → Structured role requirements
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│    Agent 2: Match Analyzer   │  → Score, recommendation, skill gaps
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│   Agent 3: Resume Optimizer  │  → Truthful bullet improvements
+└──────────────────────────────┘
+               │
+               ▼
+      Application Intelligence
+```
+
+Three specialized AI agents run in sequence. Each produces structured output using Pydantic schemas. No hallucinated experience. No invented metrics. Every suggestion is grounded in your actual resume content.
+
+---
 
 ## Features
 
-- **Job Analysis** — Structured extraction of title, skills, responsibilities, keywords
-- **Match Analysis** — Realistic match scoring with skill gap identification
-- **Resume Optimization** — Truthful bullet improvements with copy-to-clipboard
-- **PDF Resume Upload** — Drag-and-drop with validation
-- **Premium Dark UI** — Smooth scrolling, Framer Motion animations, responsive design
-- **Scroll-Aware Navigation** — Sticky section nav with active indicators
+| Feature | Description |
+|---------|-------------|
+| **Job Analysis** | Extracts title, skills, responsibilities, keywords from any JD |
+| **Match Scoring** | Realistic 0–100 score with Apply / Maybe / Do Not Apply verdict |
+| **Skill Constellation** | Interactive visualization of matched vs. missing skills |
+| **Resume Optimization** | Before/After/Why bullet transformations with copy-to-clipboard |
+| **Application Brief** | One-click copyable summary of your fit for the role |
+| **Progressive Disclosure** | See the big picture first, drill into details on demand |
 
-## Architecture
-
-```
-┌─────────────────────┐
-│   Next.js Frontend  │
-│   (React/TypeScript │
-│    Tailwind/Framer) │
-└──────────┬──────────┘
-           │ HTTP POST /api/analyze
-           ▼
-┌─────────────────────┐
-│   FastAPI Backend   │
-│   (backend/app.py)  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Pipeline Layer     │
-│  (backend/pipeline) │
-│                     │
-│  ┌───────────────┐  │
-│  │ Agent 1:      │  │
-│  │ Job Analyzer  │  │
-│  └───────┬───────┘  │
-│          ▼          │
-│  ┌───────────────┐  │
-│  │ Agent 2:      │  │
-│  │ Match Analyzer│  │
-│  └───────┬───────┘  │
-│          ▼          │
-│  ┌───────────────┐  │
-│  │ Agent 3:      │  │
-│  │ Resume Optim. │  │
-│  └───────────────┘  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│     Groq API        │
-│ (openai/gpt-oss-120b)│
-└─────────────────────┘
-```
-
-## Three-Agent Architecture
-
-| Agent | Input | Output | Purpose |
-|-------|-------|--------|---------|
-| Job Analyzer | Job description text | `JobAnalysis` | Extract structured job info |
-| Match Analyzer | `JobAnalysis` + resume text | `MatchAnalysis` | Score candidate fit |
-| Resume Optimizer | `JobAnalysis` + `MatchAnalysis` + resume | `ResumeOptimization` | Suggest truthful improvements |
-
-All agents use structured Pydantic output via `create_agent` with `response_format`.
+---
 
 ## Tech Stack
 
-**Backend:**
-- Python 3.14
-- FastAPI + Uvicorn
-- LangChain + LangChain-Groq
+### Backend
+- Python · FastAPI · Uvicorn
+- LangChain · LangChain-Groq
+- Groq (`openai/gpt-oss-120b`)
 - Pydantic (structured AI output)
 - PyPDF (resume text extraction)
-- Groq (openai/gpt-oss-120b)
 
-**Frontend:**
-- Next.js 16
-- React 19
-- TypeScript
+### Frontend
+- Next.js 16 · React 19 · TypeScript
 - Tailwind CSS v4
 - Framer Motion
+- Custom SVG skill constellation
+
+### Infrastructure
+- Backend: [Render](https://render.com)
+- Frontend: [Vercel](https://vercel.com)
+
+---
 
 ## Project Structure
 
 ```
-Job_application-copilot/
-├── main.py                  # Original CLI pipeline (source of truth)
+WorthyApply/
+├── main.py                        # AI pipeline (source of truth)
+├── requirements.txt               # Python dependencies
 ├── backend/
-│   ├── __init__.py
-│   ├── app.py               # FastAPI server
-│   ├── pipeline.py          # Web-callable integration layer
-│   └── requirements.txt
+│   ├── app.py                     # FastAPI server
+│   ├── pipeline.py                # Web-callable integration layer
+│   └── requirements.txt           # Backend-specific deps
 ├── frontend/
 │   ├── app/
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   └── globals.css
+│   │   ├── page.tsx               # Main entry (state machine)
+│   │   ├── layout.tsx             # Root layout + fonts
+│   │   └── globals.css            # Design system
 │   ├── components/
-│   │   ├── LandingPage.tsx
-│   │   ├── LoadingState.tsx
-│   │   ├── ResultsPage.tsx
+│   │   ├── Landing.tsx            # Product landing page
+│   │   ├── Workspace.tsx          # Upload + JD input
+│   │   ├── Processing.tsx         # Analysis loading state
+│   │   ├── Results.tsx            # Scroll-driven results
 │   │   └── results/
-│   │       ├── ResultHero.tsx
-│   │       ├── JobAnalysisSection.tsx
-│   │       ├── MatchAnalysisSection.tsx
-│   │       ├── ResumeOptimizationSection.tsx
-│   │       ├── SectionReveal.tsx
-│   │       └── CopyButton.tsx
-│   ├── lib/
-│   │   ├── api.ts
-│   │   └── types.ts
-│   └── .env.local
-├── .env                     # GROQ_API_KEY (not committed)
+│   │       ├── OverviewHero.tsx   # Score + recommendation
+│   │       ├── SkillConstellation.tsx
+│   │       ├── RequirementsBlock.tsx
+│   │       ├── MatchBlock.tsx
+│   │       ├── ImprovementsBlock.tsx
+│   │       ├── DetailsBlock.tsx
+│   │       ├── ApplicationBrief.tsx
+│   │       ├── CopyButton.tsx
+│   │       └── Reveal.tsx
+│   └── lib/
+│       ├── api.ts                 # API client
+│       └── types.ts               # TypeScript interfaces
 ├── .env.example
-├── .gitignore
-└── README.md
+└── .gitignore
 ```
 
-## Setup Instructions
+---
+
+## Getting Started
 
 ### Prerequisites
 
 - Python 3.10+
 - Node.js 18+
-- Groq API key (get one at https://console.groq.com)
+- [Groq API key](https://console.groq.com)
 
-### Environment Variables
-
-```bash
-cp .env.example .env
-# Edit .env and add your Groq API key
-```
-
-### Backend Setup
+### Setup
 
 ```bash
+# Clone
+git clone https://github.com/sanath-2512/Worthyapply.git
+cd Worthyapply
+
+# Backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r backend/requirements.txt
-```
+pip install -r requirements.txt
 
-### Frontend Setup
+# Environment
+cp .env.example .env
+# Add your GROQ_API_KEY to .env
 
-```bash
+# Frontend
 cd frontend
 npm install
 ```
 
-## How to Run
-
-### Start the Backend
+### Run Locally
 
 ```bash
+# Terminal 1 — Backend
 source .venv/bin/activate
 uvicorn backend.app:app --reload --port 8000
-```
 
-### Start the Frontend
-
-```bash
+# Terminal 2 — Frontend
 cd frontend
 npm run dev
 ```
 
-Then open http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000)
 
-## How the AI Pipeline Works
+---
 
-1. User uploads a PDF resume and pastes a job description
-2. FastAPI extracts text from the PDF using PyPDF
-3. **Agent 1** analyzes the job description into structured fields
-4. **Agent 2** compares the resume against the job analysis, producing a match score and recommendation
-5. **Agent 3** suggests specific, truthful resume improvements grounded in actual resume content
-6. All structured results are returned as JSON to the frontend
-7. Frontend renders the analysis with animations and scroll-aware navigation
-
-## API Overview
+## API
 
 ### `GET /api/health`
 
@@ -190,19 +172,58 @@ Returns `{"status": "ok"}`.
 ### `POST /api/analyze`
 
 **Request:** `multipart/form-data`
-- `resume` — PDF file
-- `job_description` — string
 
-**Response:** JSON with `job_analysis`, `match_analysis`, `resume_optimization`
+| Field | Type | Description |
+|-------|------|-------------|
+| `resume` | File (PDF) | The candidate's resume |
+| `job_description` | String | Full job description text |
 
-## Screenshots
+**Response:** JSON containing `job_analysis`, `match_analysis`, `resume_optimization`.
 
-*Add screenshots after running the application.*
+---
 
-## Known Limitations
+## Three-Agent Architecture
 
-- No real-time progress from individual agents (loading state is animated but not step-accurate)
-- Scanned/image PDFs cannot be processed (text extraction only)
-- Groq rate limits may cause occasional 429 errors
-- No persistent storage — results exist only in browser memory
-- Single analysis at a time (no queue)
+| Agent | Input | Output | Purpose |
+|-------|-------|--------|---------|
+| Job Analyzer | Job description | `JobAnalysis` | Structure the role's requirements |
+| Match Analyzer | JobAnalysis + Resume | `MatchAnalysis` | Score fit, identify gaps |
+| Resume Optimizer | All above + Resume | `ResumeOptimization` | Suggest truthful improvements |
+
+### Grounding Rules
+
+The optimizer **never**:
+- Invents experience, skills, or metrics
+- Changes "contributed" to "led" without evidence
+- Adds technologies just because they appear in the JD
+- Claims outcomes not supported by the resume
+
+---
+
+## Environment Variables
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `GROQ_API_KEY` | Backend (Render) | Groq API authentication |
+| `NEXT_PUBLIC_API_URL` | Frontend (Vercel) | Backend URL for API calls |
+
+---
+
+## Deployment
+
+| Service | Platform | URL |
+|---------|----------|-----|
+| Backend | Render (Free) | https://worthyapply.onrender.com |
+| Frontend | Vercel (Free) | https://worthyapply-sigma.vercel.app |
+
+> Free Render instances sleep after 15 min of inactivity. First request may take ~30s to cold-start.
+
+---
+
+## License
+
+MIT
+
+---
+
+Built by [Sanath](https://github.com/sanath-2512)
