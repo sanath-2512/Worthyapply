@@ -62,7 +62,7 @@ export function Landing({ onGetStarted }: Props) {
             Resume Builder
           </a>
           <span className="text-[10px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
-            v1.0
+            v2.0
           </span>
         </div>
       </header>
