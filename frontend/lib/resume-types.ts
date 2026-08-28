@@ -1,11 +1,13 @@
 export interface PersonalInfo {
   fullName: string;
   title: string;
-  email: string;
   phone: string;
-  location: string;
+  email: string;
   linkedin: string;
   github: string;
+  codechef: string;
+  codeforces: string;
+  leetcode: string;
   portfolio: string;
 }
 
@@ -13,32 +15,35 @@ export interface Education {
   id: string;
   institution: string;
   degree: string;
-  field: string;
   location: string;
   startDate: string;
   endDate: string;
   grade: string;
+  info: string;
 }
 
 export interface Experience {
   id: string;
-  company: string;
   role: string;
+  company: string;
   location: string;
   startDate: string;
   endDate: string;
-  bullets: string[];
+  currentlyWorking: boolean;
+  description: string; // rich text HTML
   technologies: string;
 }
 
 export interface Project {
   id: string;
   name: string;
-  description: string;
-  technologies: string;
+  category: string;
   github: string;
   demo: string;
   date: string;
+  currentlyWorking: boolean;
+  description: string; // rich text HTML
+  technologies: string;
 }
 
 export interface SkillCategory {
@@ -47,16 +52,21 @@ export interface SkillCategory {
   skills: string;
 }
 
-export interface Certification {
+export interface Activity {
   id: string;
-  name: string;
-  issuer: string;
-  date: string;
+  title: string;
+  organizations: string;
+  description: string;
 }
 
-export interface Achievement {
+export interface Certificate {
   id: string;
-  text: string;
+  title: string;
+  organisation: string;
+  issueDate: string;
+  expiryDate: string;
+  link: string;
+  description: string;
 }
 
 export interface ResumeData {
@@ -65,9 +75,9 @@ export interface ResumeData {
   education: Education[];
   experience: Experience[];
   projects: Project[];
+  certificates: Certificate[];
   skills: SkillCategory[];
-  certifications: Certification[];
-  achievements: Achievement[];
+  activities: Activity[];
 }
 
 export function createEmptyResume(): ResumeData {
@@ -75,23 +85,39 @@ export function createEmptyResume(): ResumeData {
     personal: {
       fullName: "",
       title: "",
-      email: "",
       phone: "",
-      location: "",
+      email: "",
       linkedin: "",
       github: "",
+      codechef: "",
+      codeforces: "",
+      leetcode: "",
       portfolio: "",
     },
     summary: "",
     education: [],
     experience: [],
     projects: [],
+    certificates: [],
     skills: [],
-    certifications: [],
-    achievements: [],
+    activities: [],
   };
 }
 
 export function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/** Check if rich-text HTML has actual visible content. */
+export function hasText(html: string): boolean {
+  if (!html) return false;
+  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
+}
+
+/** Normalize a URL — ensure it has https:// prefix. */
+export function normalizeUrl(url: string): string {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  return `https://${trimmed}`;
 }

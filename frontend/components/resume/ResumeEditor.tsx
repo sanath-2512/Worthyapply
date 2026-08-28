@@ -1,8 +1,11 @@
 "use client";
 
-import { ResumeData, Education, Experience, Project, SkillCategory, Certification, Achievement, generateId } from "@/lib/resume-types";
-import { motion } from "framer-motion";
 import { useState } from "react";
+import {
+  ResumeData, generateId,
+} from "@/lib/resume-types";
+import { RichTextEditor } from "./RichTextEditor";
+import "./rich-text.css";
 
 interface Props {
   data: ResumeData;
@@ -10,152 +13,170 @@ interface Props {
   onClear: () => void;
 }
 
+const PROJECT_CATEGORIES = ["AI/ML", "Core", "Dev", "Robotics"];
+
 export function ResumeEditor({ data, onChange, onClear }: Props) {
   const [confirmClear, setConfirmClear] = useState(false);
-
   const update = (partial: Partial<ResumeData>) => onChange({ ...data, ...partial });
   const updatePersonal = (partial: Partial<ResumeData["personal"]>) =>
     onChange({ ...data, personal: { ...data.personal, ...partial } });
 
+  function move<T>(arr: T[], from: number, to: number): T[] {
+    if (to < 0 || to >= arr.length) return arr;
+    const copy = [...arr];
+    const [item] = copy.splice(from, 1);
+    copy.splice(to, 0, item);
+    return copy;
+  }
+
   return (
-    <div className="space-y-8 pb-12">
-      {/* Personal */}
-      <Section title="Personal Information">
+    <div className="space-y-8 pb-16">
+      {/* PERSONAL */}
+      <Group title="Personal Details">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input label="Full Name *" value={data.personal.fullName} onChange={(v) => updatePersonal({ fullName: v })} />
-          <Input label="Professional Title" value={data.personal.title} onChange={(v) => updatePersonal({ title: v })} />
-          <Input label="Email *" value={data.personal.email} onChange={(v) => updatePersonal({ email: v })} type="email" />
-          <Input label="Phone" value={data.personal.phone} onChange={(v) => updatePersonal({ phone: v })} />
-          <Input label="Location" value={data.personal.location} onChange={(v) => updatePersonal({ location: v })} />
-          <Input label="LinkedIn" value={data.personal.linkedin} onChange={(v) => updatePersonal({ linkedin: v })} />
-          <Input label="GitHub" value={data.personal.github} onChange={(v) => updatePersonal({ github: v })} />
-          <Input label="Portfolio" value={data.personal.portfolio} onChange={(v) => updatePersonal({ portfolio: v })} />
+          <Field label="Full Name *" value={data.personal.fullName} onChange={(v) => updatePersonal({ fullName: v })} />
+          <Field label="Professional Title" value={data.personal.title} onChange={(v) => updatePersonal({ title: v })} />
+          <Field label="Phone" value={data.personal.phone} onChange={(v) => updatePersonal({ phone: v })} />
+          <Field label="Email *" value={data.personal.email} onChange={(v) => updatePersonal({ email: v })} />
         </div>
-      </Section>
+      </Group>
 
-      {/* Summary */}
-      <Section title="Summary">
-        <textarea
+      {/* SUMMARY (rich text) */}
+      <Group title="Professional Summary">
+        <RichTextEditor
           value={data.summary}
-          onChange={(e) => update({ summary: e.target.value })}
+          onChange={(html) => update({ summary: html })}
           placeholder="Brief professional summary..."
-          rows={3}
-          className="w-full rounded-xl p-3 text-sm border resize-y focus:outline-none focus:border-[var(--accent)]"
-          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
         />
-      </Section>
+      </Group>
 
-      {/* Education */}
-      <Section title="Education" onAdd={() => update({ education: [...data.education, { id: generateId(), institution: "", degree: "", field: "", location: "", startDate: "", endDate: "", grade: "" }] })}>
+      {/* SOCIAL LINKS */}
+      <Group title="Social Links">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Field label="LinkedIn" value={data.personal.linkedin} onChange={(v) => updatePersonal({ linkedin: v })} placeholder="linkedin.com/in/you" />
+          <Field label="GitHub" value={data.personal.github} onChange={(v) => updatePersonal({ github: v })} placeholder="github.com/you" />
+          <Field label="CodeChef" value={data.personal.codechef} onChange={(v) => updatePersonal({ codechef: v })} />
+          <Field label="Codeforces" value={data.personal.codeforces} onChange={(v) => updatePersonal({ codeforces: v })} />
+          <Field label="LeetCode" value={data.personal.leetcode} onChange={(v) => updatePersonal({ leetcode: v })} />
+          <Field label="Portfolio" value={data.personal.portfolio} onChange={(v) => updatePersonal({ portfolio: v })} />
+        </div>
+      </Group>
+
+      {/* EDUCATION */}
+      <Group title="Education" onAdd={() => update({ education: [...data.education, { id: generateId(), institution: "", degree: "", location: "", startDate: "", endDate: "", grade: "", info: "" }] })} empty={data.education.length === 0} emptyText="No education added yet.">
         {data.education.map((edu, i) => (
-          <EntryCard key={edu.id} onRemove={() => update({ education: data.education.filter((_, j) => j !== i) })}>
+          <Entry key={edu.id} index={i} total={data.education.length}
+            onRemove={() => update({ education: data.education.filter((_, j) => j !== i) })}
+            onMove={(dir) => update({ education: move(data.education, i, i + dir) })}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input label="Institution" value={edu.institution} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], institution: v }; update({ education: arr }); }} />
-              <Input label="Degree" value={edu.degree} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], degree: v }; update({ education: arr }); }} />
-              <Input label="Field" value={edu.field} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], field: v }; update({ education: arr }); }} />
-              <Input label="Location" value={edu.location} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], location: v }; update({ education: arr }); }} />
-              <Input label="Start Date" value={edu.startDate} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], startDate: v }; update({ education: arr }); }} placeholder="2024" />
-              <Input label="End Date" value={edu.endDate} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], endDate: v }; update({ education: arr }); }} placeholder="2028" />
-              <Input label="Grade / GPA" value={edu.grade} onChange={(v) => { const arr = [...data.education]; arr[i] = { ...arr[i], grade: v }; update({ education: arr }); }} />
+              <Field label="Degree *" value={edu.degree} onChange={(v) => patchArr(data, "education", i, { degree: v }, update)} />
+              <Field label="Institute *" value={edu.institution} onChange={(v) => patchArr(data, "education", i, { institution: v }, update)} />
+              <Field label="Location" value={edu.location} onChange={(v) => patchArr(data, "education", i, { location: v }, update)} />
+              <Field label="Grade" value={edu.grade} onChange={(v) => patchArr(data, "education", i, { grade: v }, update)} placeholder="Grade: 8.28/10" />
+              <Field label="Start *" value={edu.startDate} onChange={(v) => patchArr(data, "education", i, { startDate: v }, update)} placeholder="2024" />
+              <Field label="End *" value={edu.endDate} onChange={(v) => patchArr(data, "education", i, { endDate: v }, update)} placeholder="2028" />
+              <Field label="Additional Info" value={edu.info} onChange={(v) => patchArr(data, "education", i, { info: v }, update)} className="md:col-span-2" />
             </div>
-          </EntryCard>
+          </Entry>
         ))}
-      </Section>
+      </Group>
 
-      {/* Experience */}
-      <Section title="Experience" onAdd={() => update({ experience: [...data.experience, { id: generateId(), company: "", role: "", location: "", startDate: "", endDate: "", bullets: [""], technologies: "" }] })}>
+      {/* EXPERIENCE */}
+      <Group title="Work Experience" onAdd={() => update({ experience: [...data.experience, { id: generateId(), role: "", company: "", location: "", startDate: "", endDate: "", currentlyWorking: false, description: "", technologies: "" }] })} empty={data.experience.length === 0} emptyText="No experience added yet.">
         {data.experience.map((exp, i) => (
-          <EntryCard key={exp.id} onRemove={() => update({ experience: data.experience.filter((_, j) => j !== i) })}>
+          <Entry key={exp.id} index={i} total={data.experience.length}
+            onRemove={() => update({ experience: data.experience.filter((_, j) => j !== i) })}
+            onMove={(dir) => update({ experience: move(data.experience, i, i + dir) })}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              <Input label="Company" value={exp.company} onChange={(v) => { const arr = [...data.experience]; arr[i] = { ...arr[i], company: v }; update({ experience: arr }); }} />
-              <Input label="Role" value={exp.role} onChange={(v) => { const arr = [...data.experience]; arr[i] = { ...arr[i], role: v }; update({ experience: arr }); }} />
-              <Input label="Location" value={exp.location} onChange={(v) => { const arr = [...data.experience]; arr[i] = { ...arr[i], location: v }; update({ experience: arr }); }} />
-              <Input label="Start Date" value={exp.startDate} onChange={(v) => { const arr = [...data.experience]; arr[i] = { ...arr[i], startDate: v }; update({ experience: arr }); }} />
-              <Input label="End Date" value={exp.endDate} onChange={(v) => { const arr = [...data.experience]; arr[i] = { ...arr[i], endDate: v }; update({ experience: arr }); }} placeholder="Present" />
-              <Input label="Technologies" value={exp.technologies} onChange={(v) => { const arr = [...data.experience]; arr[i] = { ...arr[i], technologies: v }; update({ experience: arr }); }} placeholder="Python, React, AWS" />
+              <Field label="Designation *" value={exp.role} onChange={(v) => patchArr(data, "experience", i, { role: v }, update)} />
+              <Field label="Company *" value={exp.company} onChange={(v) => patchArr(data, "experience", i, { company: v }, update)} />
+              <Field label="Location" value={exp.location} onChange={(v) => patchArr(data, "experience", i, { location: v }, update)} />
+              <Field label="Technologies" value={exp.technologies} onChange={(v) => patchArr(data, "experience", i, { technologies: v }, update)} />
+              <Field label="Start *" value={exp.startDate} onChange={(v) => patchArr(data, "experience", i, { startDate: v }, update)} />
+              <Field label="End" value={exp.endDate} onChange={(v) => patchArr(data, "experience", i, { endDate: v }, update)} placeholder="June 2026" disabled={exp.currentlyWorking} />
             </div>
-            <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] mb-2" style={{ color: "var(--text-muted)" }}>Bullet Points</label>
-            {exp.bullets.map((b, bi) => (
-              <div key={bi} className="flex gap-2 mb-2">
-                <input
-                  value={b}
-                  onChange={(e) => { const arr = [...data.experience]; const bullets = [...arr[i].bullets]; bullets[bi] = e.target.value; arr[i] = { ...arr[i], bullets }; update({ experience: arr }); }}
-                  className="flex-1 rounded-lg px-3 py-2 text-sm border focus:outline-none focus:border-[var(--accent)]"
-                  style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
-                  placeholder="Achievement or responsibility..."
-                />
-                <button
-                  onClick={() => { const arr = [...data.experience]; const bullets = arr[i].bullets.filter((_, j) => j !== bi); arr[i] = { ...arr[i], bullets: bullets.length ? bullets : [""] }; update({ experience: arr }); }}
-                  className="text-xs px-2 rounded-lg" style={{ color: "var(--red)" }}
-                >✕</button>
-              </div>
-            ))}
-            <button
-              onClick={() => { const arr = [...data.experience]; arr[i] = { ...arr[i], bullets: [...arr[i].bullets, ""] }; update({ experience: arr }); }}
-              className="text-[11px] font-medium" style={{ color: "var(--accent)" }}
-            >+ Add bullet</button>
-          </EntryCard>
+            <Checkbox label="I currently work here" checked={exp.currentlyWorking} onChange={(c) => patchArr(data, "experience", i, { currentlyWorking: c }, update)} />
+            <div className="mt-3">
+              <FieldLabel>Description *</FieldLabel>
+              <RichTextEditor value={exp.description} onChange={(html) => patchArr(data, "experience", i, { description: html }, update)} placeholder="Describe your role and achievements..." />
+            </div>
+          </Entry>
         ))}
-      </Section>
+      </Group>
 
-      {/* Projects */}
-      <Section title="Projects" onAdd={() => update({ projects: [...data.projects, { id: generateId(), name: "", description: "", technologies: "", github: "", demo: "", date: "" }] })}>
+      {/* PROJECTS */}
+      <Group title="Projects" onAdd={() => update({ projects: [...data.projects, { id: generateId(), name: "", category: "", github: "", demo: "", date: "", currentlyWorking: false, description: "", technologies: "" }] })} empty={data.projects.length === 0} emptyText="No projects added yet.">
         {data.projects.map((proj, i) => (
-          <EntryCard key={proj.id} onRemove={() => update({ projects: data.projects.filter((_, j) => j !== i) })}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input label="Name" value={proj.name} onChange={(v) => { const arr = [...data.projects]; arr[i] = { ...arr[i], name: v }; update({ projects: arr }); }} />
-              <Input label="Date" value={proj.date} onChange={(v) => { const arr = [...data.projects]; arr[i] = { ...arr[i], date: v }; update({ projects: arr }); }} placeholder="March 2026" />
-              <Input label="GitHub" value={proj.github} onChange={(v) => { const arr = [...data.projects]; arr[i] = { ...arr[i], github: v }; update({ projects: arr }); }} />
-              <Input label="Demo" value={proj.demo} onChange={(v) => { const arr = [...data.projects]; arr[i] = { ...arr[i], demo: v }; update({ projects: arr }); }} />
-              <Input label="Technologies" value={proj.technologies} onChange={(v) => { const arr = [...data.projects]; arr[i] = { ...arr[i], technologies: v }; update({ projects: arr }); }} className="md:col-span-2" />
+          <Entry key={proj.id} index={i} total={data.projects.length}
+            onRemove={() => update({ projects: data.projects.filter((_, j) => j !== i) })}
+            onMove={(dir) => update({ projects: move(data.projects, i, i + dir) })}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <Field label="Title *" value={proj.name} onChange={(v) => patchArr(data, "projects", i, { name: v }, update)} />
+              <Field label="Date" value={proj.date} onChange={(v) => patchArr(data, "projects", i, { date: v }, update)} placeholder="March 2026" />
+              <Field label="Code URL (GitHub)" value={proj.github} onChange={(v) => patchArr(data, "projects", i, { github: v }, update)} />
+              <Field label="Hosted URL (Demo)" value={proj.demo} onChange={(v) => patchArr(data, "projects", i, { demo: v }, update)} />
+              <Select label="Category" value={proj.category} options={PROJECT_CATEGORIES} onChange={(v) => patchArr(data, "projects", i, { category: v }, update)} />
+              <Field label="Technologies" value={proj.technologies} onChange={(v) => patchArr(data, "projects", i, { technologies: v }, update)} />
             </div>
-            <textarea
-              value={proj.description}
-              onChange={(e) => { const arr = [...data.projects]; arr[i] = { ...arr[i], description: e.target.value }; update({ projects: arr }); }}
-              placeholder="Brief description..."
-              rows={2}
-              className="w-full mt-3 rounded-xl p-3 text-sm border resize-y focus:outline-none focus:border-[var(--accent)]"
-              style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
-            />
-          </EntryCard>
+            <Checkbox label="I am currently working on this project" checked={proj.currentlyWorking} onChange={(c) => patchArr(data, "projects", i, { currentlyWorking: c }, update)} />
+            <div className="mt-3">
+              <FieldLabel>Description</FieldLabel>
+              <RichTextEditor value={proj.description} onChange={(html) => patchArr(data, "projects", i, { description: html }, update)} placeholder="Describe the project..." />
+            </div>
+          </Entry>
         ))}
-      </Section>
+      </Group>
 
-      {/* Skills */}
-      <Section title="Skills" onAdd={() => update({ skills: [...data.skills, { id: generateId(), category: "", skills: "" }] })}>
-        {data.skills.map((s, i) => (
-          <EntryCard key={s.id} onRemove={() => update({ skills: data.skills.filter((_, j) => j !== i) })}>
+      {/* CERTIFICATES */}
+      <Group title="Certificates" onAdd={() => update({ certificates: [...data.certificates, { id: generateId(), title: "", organisation: "", issueDate: "", expiryDate: "", link: "", description: "" }] })} empty={data.certificates.length === 0} emptyText="No certificates added yet.">
+        {data.certificates.map((c, i) => (
+          <Entry key={c.id} index={i} total={data.certificates.length}
+            onRemove={() => update({ certificates: data.certificates.filter((_, j) => j !== i) })}
+            onMove={(dir) => update({ certificates: move(data.certificates, i, i + dir) })}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <Field label="Certificate Title *" value={c.title} onChange={(v) => patchArr(data, "certificates", i, { title: v }, update)} />
+              <Field label="Organisation *" value={c.organisation} onChange={(v) => patchArr(data, "certificates", i, { organisation: v }, update)} />
+              <Field label="Issue Date *" value={c.issueDate} onChange={(v) => patchArr(data, "certificates", i, { issueDate: v }, update)} placeholder="March 2025" />
+              <Field label="Expiry Date" value={c.expiryDate} onChange={(v) => patchArr(data, "certificates", i, { expiryDate: v }, update)} />
+              <Field label="Certification Link" value={c.link} onChange={(v) => patchArr(data, "certificates", i, { link: v }, update)} className="md:col-span-2" />
+            </div>
+            <FieldLabel>Description</FieldLabel>
+            <RichTextEditor value={c.description} onChange={(html) => patchArr(data, "certificates", i, { description: html }, update)} placeholder="Describe the certification..." />
+          </Entry>
+        ))}
+      </Group>
+
+      {/* SKILLS */}
+      <Group title="Skills" onAdd={() => update({ skills: [...data.skills, { id: generateId(), category: "", skills: "" }] })} empty={data.skills.length === 0} emptyText="No skill categories yet.">
+        {data.skills.map((sk, i) => (
+          <Entry key={sk.id} index={i} total={data.skills.length}
+            onRemove={() => update({ skills: data.skills.filter((_, j) => j !== i) })}
+            onMove={(dir) => update({ skills: move(data.skills, i, i + dir) })}>
             <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3">
-              <Input label="Category" value={s.category} onChange={(v) => { const arr = [...data.skills]; arr[i] = { ...arr[i], category: v }; update({ skills: arr }); }} placeholder="Languages" />
-              <Input label="Skills" value={s.skills} onChange={(v) => { const arr = [...data.skills]; arr[i] = { ...arr[i], skills: v }; update({ skills: arr }); }} placeholder="Python, JavaScript, TypeScript" />
+              <Field label="Category" value={sk.category} onChange={(v) => patchArr(data, "skills", i, { category: v }, update)} placeholder="Languages" />
+              <Field label="Skills" value={sk.skills} onChange={(v) => patchArr(data, "skills", i, { skills: v }, update)} placeholder="Python, JavaScript, TypeScript" />
             </div>
-          </EntryCard>
+          </Entry>
         ))}
-      </Section>
+      </Group>
 
-      {/* Certifications */}
-      <Section title="Certifications" onAdd={() => update({ certifications: [...data.certifications, { id: generateId(), name: "", issuer: "", date: "" }] })}>
-        {data.certifications.map((c, i) => (
-          <EntryCard key={c.id} onRemove={() => update({ certifications: data.certifications.filter((_, j) => j !== i) })}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input label="Name" value={c.name} onChange={(v) => { const arr = [...data.certifications]; arr[i] = { ...arr[i], name: v }; update({ certifications: arr }); }} />
-              <Input label="Issuer" value={c.issuer} onChange={(v) => { const arr = [...data.certifications]; arr[i] = { ...arr[i], issuer: v }; update({ certifications: arr }); }} />
-              <Input label="Date" value={c.date} onChange={(v) => { const arr = [...data.certifications]; arr[i] = { ...arr[i], date: v }; update({ certifications: arr }); }} />
+      {/* ACTIVITIES (rich text) */}
+      <Group title="Extra-Curricular Activities" onAdd={() => update({ activities: [...data.activities, { id: generateId(), title: "", organizations: "", description: "" }] })} empty={data.activities.length === 0} emptyText="No activities added yet.">
+        {data.activities.map((a, i) => (
+          <Entry key={a.id} index={i} total={data.activities.length}
+            onRemove={() => update({ activities: data.activities.filter((_, j) => j !== i) })}
+            onMove={(dir) => update({ activities: move(data.activities, i, i + dir) })}>
+            <div className="space-y-3 mb-3">
+              <Field label="Title / Category *" value={a.title} onChange={(v) => patchArr(data, "activities", i, { title: v }, update)} />
+              <Field label="Organizations / Platforms" value={a.organizations} onChange={(v) => patchArr(data, "activities", i, { organizations: v }, update)} />
             </div>
-          </EntryCard>
+            <FieldLabel>Description</FieldLabel>
+            <RichTextEditor value={a.description} onChange={(html) => patchArr(data, "activities", i, { description: html }, update)} placeholder="Describe the activity..." />
+          </Entry>
         ))}
-      </Section>
+      </Group>
 
-      {/* Achievements */}
-      <Section title="Achievements" onAdd={() => update({ achievements: [...data.achievements, { id: generateId(), text: "" }] })}>
-        {data.achievements.map((a, i) => (
-          <EntryCard key={a.id} onRemove={() => update({ achievements: data.achievements.filter((_, j) => j !== i) })}>
-            <Input label="Achievement" value={a.text} onChange={(v) => { const arr = [...data.achievements]; arr[i] = { ...arr[i], text: v }; update({ achievements: arr }); }} />
-          </EntryCard>
-        ))}
-      </Section>
-
-      {/* Clear */}
+      {/* CLEAR */}
       <div className="pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
         {!confirmClear ? (
           <button onClick={() => setConfirmClear(true)} className="text-[11px] font-medium" style={{ color: "var(--red)" }}>
@@ -173,47 +194,98 @@ export function ResumeEditor({ data, onChange, onClear }: Props) {
   );
 }
 
-// --- Primitives ---
+function patchArr<K extends keyof ResumeData>(
+  data: ResumeData, key: K, index: number, patch: object,
+  update: (partial: Partial<ResumeData>) => void
+) {
+  const arr = [...(data[key] as unknown as object[])];
+  arr[index] = { ...arr[index], ...patch };
+  update({ [key]: arr } as Partial<ResumeData>);
+}
 
-function Section({ title, children, onAdd }: { title: string; children: React.ReactNode; onAdd?: () => void }) {
+// ─── Primitives ───
+function Group({ title, children, onAdd, empty, emptyText }: { title: string; children: React.ReactNode; onAdd?: () => void; empty?: boolean; emptyText?: string }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+    <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{title}</h3>
-        {onAdd && (
-          <button onClick={onAdd} className="text-[11px] font-medium" style={{ color: "var(--accent)" }}>
-            + Add
-          </button>
+        {onAdd && <button onClick={onAdd} className="text-[11px] font-medium" style={{ color: "var(--accent)" }}>+ Add</button>}
+      </div>
+      {empty && emptyText ? (
+        <div className="text-[12px] rounded-xl border border-dashed p-4 text-center" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+          {emptyText}
+        </div>
+      ) : children}
+    </div>
+  );
+}
+
+function Entry({ children, onRemove, onMove, index, total }: { children: React.ReactNode; onRemove: () => void; onMove: (dir: number) => void; index: number; total: number }) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="p-4 rounded-xl border mb-3" style={{ background: "var(--surface)", borderColor: "var(--border-subtle)" }}>
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex gap-1">
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="text-[11px] px-1.5 disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move up">↑</button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-[11px] px-1.5 disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move down">↓</button>
+        </div>
+        {!confirming ? (
+          <button onClick={() => setConfirming(true)} className="text-[10px] px-2 py-0.5 rounded" style={{ color: "var(--red)", background: "var(--red-dim)" }}>Delete</button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]" style={{ color: "var(--red)" }}>Delete?</span>
+            <button onClick={onRemove} className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: "var(--red-dim)", color: "var(--red)" }}>Yes</button>
+            <button onClick={() => setConfirming(false)} className="text-[10px]" style={{ color: "var(--text-muted)" }}>No</button>
+          </div>
         )}
       </div>
       {children}
-    </motion.div>
-  );
-}
-
-function EntryCard({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
-  return (
-    <div className="p-4 rounded-xl border mb-3" style={{ background: "var(--surface)", borderColor: "var(--border-subtle)" }}>
-      <div className="flex justify-end mb-2">
-        <button onClick={onRemove} className="text-[10px] px-2 py-0.5 rounded" style={{ color: "var(--red)", background: "var(--red-dim)" }}>Remove</button>
-      </div>
-      {children}
     </div>
   );
 }
 
-function Input({ label, value, onChange, type = "text", placeholder, className = "" }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] mb-1.5" style={{ color: "var(--text-muted)" }}>{children}</label>;
+}
+
+function Field({ label, value, onChange, placeholder, className = "", disabled }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string; disabled?: boolean }) {
   return (
     <div className={className}>
-      <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] mb-1" style={{ color: "var(--text-muted)" }}>{label}</label>
+      <FieldLabel>{label}</FieldLabel>
       <input
-        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg px-3 py-2 text-sm border focus:outline-none focus:border-[var(--accent)]"
+        disabled={disabled}
+        className="w-full rounded-lg px-3 py-2 text-sm border focus:outline-none focus:border-[var(--accent)] disabled:opacity-40"
         style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
       />
     </div>
+  );
+}
+
+function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg px-3 py-2 text-sm border focus:outline-none focus:border-[var(--accent)]"
+        style={{ background: "var(--surface)", borderColor: "var(--border)", color: value ? "var(--text)" : "var(--text-muted)" }}
+      >
+        <option value="">Select...</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (c: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-[var(--accent)]" />
+      <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>{label}</span>
+    </label>
   );
 }

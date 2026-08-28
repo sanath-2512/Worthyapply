@@ -1,0 +1,278 @@
+/* ═══════════════════════════════════════════
+   WORTHY CLASSIC — Canonical Resume Document
+   Fixed A4 (210mm × 297mm). Powers preview + PDF.
+   One document grid: all sections share the same
+   left/right boundaries via the page padding.
+   ═══════════════════════════════════════════ */
+
+.resume-doc {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 11mm 14mm;
+  background: #ffffff;
+  color: #111111;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+
+/* ══ HEADER (left-aligned, traditional) ══ */
+.rd-header {
+  text-align: left;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+}
+.rd-name {
+  font-size: 18pt;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+}
+.rd-title {
+  font-size: 10.5pt;
+  color: #333;
+  margin-bottom: 3px;
+}
+.rd-contact-line {
+  font-size: 10pt;
+  color: #222;
+  margin-bottom: 2px;
+}
+.rd-links-line {
+  font-size: 10pt;
+  margin-bottom: 0;
+}
+.rd-contact-plain {
+  color: #222;
+  text-decoration: none;
+}
+.rd-sep {
+  margin: 0 7px;
+  color: #888;
+}
+.rd-link-sep {
+  color: #888;
+  margin: 0 5px;
+}
+.rd-link {
+  color: #0b57d0;
+  text-decoration: none;
+}
+.rd-bold { font-weight: 700; }
+.rd-italic { font-style: italic; }
+
+/* ══ SECTIONS — consistent vertical rhythm ══ */
+.rd-section {
+  margin-top: 8px;
+}
+.rd-section:first-of-type {
+  margin-top: 4px;
+}
+.rd-section-title {
+  font-size: 11pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0 0 4px 0;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #111;
+}
+
+/* ══ ENTRIES ══ */
+.rd-entry {
+  margin-bottom: 6px;
+}
+.rd-entry:last-child {
+  margin-bottom: 0;
+}
+
+/* Deterministic two-column row: content left, meta right.
+   Date/location/grade share one right edge via flex. */
+.rd-entry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+.rd-entry-title {
+  font-weight: 700;
+  font-size: 10.5pt;
+  flex: 1;
+  min-width: 0;
+}
+.rd-entry-date,
+.rd-entry-meta {
+  font-size: 10pt;
+  color: #333;
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
+.rd-entry-sub {
+  font-size: 10pt;
+  flex: 1;
+  min-width: 0;
+}
+.rd-entry-info {
+  font-size: 10pt;
+  color: #333;
+  margin-top: 1px;
+}
+
+/* ══ BULLETS — hanging indent via list ══ */
+.rd-bullets {
+  margin: 4px 0 0 0;
+  padding-left: 15px;
+  list-style: none;
+}
+.rd-bullets li {
+  position: relative;
+  padding-left: 13px;
+  margin-bottom: 2.5px;
+  font-size: 10pt;
+  line-height: 1.36;
+  text-align: left;
+}
+.rd-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 10pt;
+}
+
+/* ══ TECHNOLOGIES — aligns with bullet text ══ */
+.rd-tech {
+  font-size: 10pt;
+  margin-top: 3px;
+  padding-left: 15px;
+}
+
+/* ══ PROJECT LINKS ══ */
+.rd-project-links {
+  font-weight: 400;
+  font-size: 10pt;
+}
+
+/* ══ SKILLS ══ */
+.rd-skill-row {
+  font-size: 10pt;
+  margin-bottom: 2.5px;
+  line-height: 1.36;
+}
+.rd-skill-row:last-child { margin-bottom: 0; }
+
+/* ══ SUMMARY ══ */
+.rd-summary {
+  font-size: 10pt;
+  margin: 0;
+  text-align: justify;
+  line-height: 1.42;
+}
+
+/* ══ RICH TEXT rendered inside resume ══ */
+.rd-rich {
+  font-size: 10pt;
+  line-height: 1.38;
+  margin-top: 3px;
+}
+.rd-rich p {
+  margin: 0 0 3px 0;
+}
+.rd-rich p:last-child { margin-bottom: 0; }
+.rd-rich ul {
+  margin: 3px 0;
+  padding-left: 15px;
+  list-style: none;
+}
+.rd-rich ul li {
+  position: relative;
+  padding-left: 13px;
+  margin-bottom: 2.5px;
+}
+.rd-rich ul li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.rd-rich ol {
+  margin: 3px 0;
+  padding-left: 20px;
+  list-style: decimal;
+}
+.rd-rich ol li {
+  margin-bottom: 2.5px;
+}
+.rd-rich a {
+  color: #0b57d0;
+  text-decoration: none;
+}
+.rd-rich b, .rd-rich strong { font-weight: 700; }
+.rd-rich i, .rd-rich em { font-style: italic; }
+
+/* ══ ACTIVITIES ══ */
+.rd-activity {
+  font-size: 10pt;
+  line-height: 1.42;
+  margin-bottom: 3px;
+  text-align: justify;
+}
+
+.rd-empty {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  margin-top: 40mm;
+  font-family: sans-serif;
+}
+
+/* Print-only copy is hidden on screen */
+.rd-print-only {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════
+   PRINT — isolate the resume for clean PDF output
+   ═══════════════════════════════════════════ */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    height: auto !important;
+  }
+  /* Hide the whole app; only the portaled print copy shows */
+  body > *:not(.rd-print-only) {
+    display: none !important;
+  }
+  .rd-print-only {
+    display: block !important;
+    position: static !important;
+  }
+  .rd-print-only .resume-doc {
+    width: 210mm;
+    min-height: auto;
+    box-shadow: none !important;
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .rd-link {
+    color: #0b57d0 !important;
+  }
+  .rd-entry {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .rd-section-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
