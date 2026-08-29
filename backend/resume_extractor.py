@@ -234,18 +234,11 @@ def extract_resume(pdf_bytes: bytes) -> ExtractedResume:
 
     prompt = EXTRACTION_PROMPT.format(resume_text=resume_text)
 
-    # Primary: Groq. Fallback: Gemini (if Groq is rate-limited or errors).
-    try:
-        llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0, max_tokens=4000)
-        agent = create_agent(model=llm, response_format=ExtractedResume)
-        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        return _cleanup(response["structured_response"])
-    except Exception as groq_error:
-        gemini = _try_gemini(prompt)
-        if gemini is not None:
-            return _cleanup(gemini)
-        # No fallback available — surface the original error
-        raise groq_error
+    # Multi-provider fallback chain: Groq → Gemini → OpenRouter → Mistral → Cohere
+    from .llm import get_structured_llm
+    llm = get_structured_llm(ExtractedResume)
+    result = llm.invoke(prompt)
+    return _cleanup(result)
 
 
 def _cleanup(result: ExtractedResume) -> ExtractedResume:
@@ -274,23 +267,4 @@ def _cleanup(result: ExtractedResume) -> ExtractedResume:
     return result
 
 
-def _try_gemini(prompt: str) -> Optional[ExtractedResume]:
-    """Fallback extraction using Google Gemini, if GEMINI_API_KEY is set."""
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        return None
-    try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
 
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
-            temperature=0,
-            google_api_key=api_key,
-        )
-        agent = create_agent(model=llm, response_format=ExtractedResume)
-        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        return response["structured_response"]
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        return None

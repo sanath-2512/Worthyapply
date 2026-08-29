@@ -31,41 +31,12 @@ from pypdf import PdfReader
 
 def _run_agent(prompt: str, response_format):
     """
-    Run a structured agent with Groq as primary and Gemini as fallback.
-    If Groq errors (e.g. rate limit), automatically retry with Gemini.
+    Run a structured request through the multi-provider fallback chain:
+    Groq → Gemini → OpenRouter → Mistral → Cohere.
     """
-    # Primary: Groq
-    try:
-        agent = create_agent(model="groq:openai/gpt-oss-120b", response_format=response_format)
-        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        return response["structured_response"]
-    except Exception as groq_error:
-        result = _run_agent_gemini(prompt, response_format)
-        if result is not None:
-            return result
-        raise groq_error
-
-
-def _run_agent_gemini(prompt: str, response_format):
-    """Fallback: Google Gemini, if GEMINI_API_KEY / GOOGLE_API_KEY is set."""
-    import os
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        return None
-    try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
-            temperature=0,
-            google_api_key=api_key,
-        )
-        agent = create_agent(model=llm, response_format=response_format)
-        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        return response["structured_response"]
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        return None
+    from .llm import get_structured_llm
+    llm = get_structured_llm(response_format)
+    return llm.invoke(prompt)
 
 
 # ============================================================

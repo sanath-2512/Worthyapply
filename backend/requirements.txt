@@ -4,6 +4,9 @@ python-multipart
 langchain
 langchain-groq
 langchain-google-genai
+langchain-openai
+langchain-mistralai
+langchain-cohere
 python-dotenv
 pydantic
 pypdf
