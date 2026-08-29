@@ -108,6 +108,24 @@ export function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+/** Merge extracted/partial resume data into a full ResumeData, adding IDs. */
+export function mergeExtracted(partial: Partial<ResumeData>): ResumeData {
+  const base = createEmptyResume();
+  const withId = <T extends object>(items: T[] | undefined): (T & { id: string })[] =>
+    (items || []).map((it) => ({ ...it, id: generateId() } as T & { id: string }));
+
+  return {
+    personal: { ...base.personal, ...(partial.personal || {}) },
+    summary: partial.summary ?? "",
+    education: withId(partial.education) as ResumeData["education"],
+    experience: withId(partial.experience) as ResumeData["experience"],
+    projects: withId(partial.projects) as ResumeData["projects"],
+    certificates: withId(partial.certificates) as ResumeData["certificates"],
+    skills: withId(partial.skills) as ResumeData["skills"],
+    activities: withId(partial.activities) as ResumeData["activities"],
+  };
+}
+
 /** Check if rich-text HTML has actual visible content. */
 export function hasText(html: string): boolean {
   if (!html) return false;

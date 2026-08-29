@@ -16,12 +16,45 @@ const A4_HEIGHT_PX = 1123; // 297mm
 export function ResumePreview({ data }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const docRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [overflow, setOverflow] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  const handleDownload = async () => {
+    if (!printRef.current) return;
+    setDownloading(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const fileName = data.personal.fullName
+        ? `${data.personal.fullName.replace(/\s+/g, "_")}_Resume.pdf`
+        : "Resume.pdf";
+
+      const target = printRef.current.querySelector(".resume-doc") as HTMLElement | null;
+      if (!target) return;
+
+      await html2pdf()
+        .set({
+          margin: 0,
+          filename: fileName,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(target)
+        .save();
+    } catch (e) {
+      console.error(e);
+      // Fallback to print dialog if html2pdf fails
+      window.print();
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Fit-to-width scaling
   useEffect(() => {
@@ -38,9 +71,13 @@ export function ResumePreview({ data }: Props) {
 
   // Detect page overflow
   useEffect(() => {
-    if (!docRef.current) return;
-    const h = docRef.current.scrollHeight;
-    setOverflow(h > A4_HEIGHT_PX + 8);
+    const el = docRef.current;
+    if (!el) return;
+    const check = () => setOverflow(el.scrollHeight > A4_HEIGHT_PX + 4);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [data]);
 
   const effectiveScale = scale * zoom;
@@ -54,8 +91,8 @@ export function ResumePreview({ data }: Props) {
             Worthy Classic
           </span>
           {overflow && (
-            <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>
-              Content exceeds one page
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-md" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>
+              <span>⚠</span> Resume exceeds one page
             </span>
           )}
         </div>
@@ -68,12 +105,12 @@ export function ResumePreview({ data }: Props) {
           </div>
 
           <button
-            onClick={() => window.print()}
-            disabled={!data.personal.fullName}
+            onClick={handleDownload}
+            disabled={!data.personal.fullName || downloading}
             className="magnetic-btn text-sm font-semibold px-5 py-2 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 4px 16px rgba(108,99,255,0.2)" }}
           >
-            Download PDF
+            {downloading ? "Preparing..." : "Download PDF"}
           </button>
         </div>
       </div>
@@ -104,10 +141,15 @@ export function ResumePreview({ data }: Props) {
         </div>
       </div>
 
-      {/* Print-only copy — portaled to body at natural A4 scale.
-          This is the ONLY thing visible when printing. */}
+      {/* Off-screen full-size copy — used as the source for PDF generation.
+          Rendered (not display:none) so html2canvas can capture it, but
+          positioned off-screen so it's invisible to the user. */}
       {mounted && createPortal(
-        <div className="rd-print-only">
+        <div
+          ref={printRef}
+          aria-hidden="true"
+          style={{ position: "fixed", left: "-9999px", top: 0, width: "210mm", background: "#fff" }}
+        >
           <ResumeDocument data={data} />
         </div>,
         document.body

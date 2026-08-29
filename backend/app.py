@@ -12,12 +12,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .pipeline import run_full_pipeline, AnalysisResponse
+from .resume_extractor import extract_resume, ExtractedResume
 
 load_dotenv()
 
 app = FastAPI(
     title="AI Job Application Copilot",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -75,6 +76,35 @@ async def analyze(
         raise HTTPException(
             status_code=500,
             detail="An error occurred while analyzing your application. Please try again.",
+        )
+
+    return result
+
+
+@app.post("/api/extract-resume", response_model=ExtractedResume)
+async def extract_resume_endpoint(resume: UploadFile = File(...)):
+    """Extract structured ResumeData from an uploaded resume PDF (V2 import flow)."""
+    if not resume.filename or not resume.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+
+    if resume.content_type and resume.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+
+    contents = await resume.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10 MB.")
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+
+    try:
+        result = extract_resume(contents)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not read your resume. Please try again or build from scratch.",
         )
 
     return result
