@@ -24,8 +24,48 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from typing import Literal
 from langchain.agents import create_agent
+from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
+
+
+def _run_agent(prompt: str, response_format):
+    """
+    Run a structured agent with Groq as primary and Gemini as fallback.
+    If Groq errors (e.g. rate limit), automatically retry with Gemini.
+    """
+    # Primary: Groq
+    try:
+        agent = create_agent(model="groq:openai/gpt-oss-120b", response_format=response_format)
+        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
+        return response["structured_response"]
+    except Exception as groq_error:
+        result = _run_agent_gemini(prompt, response_format)
+        if result is not None:
+            return result
+        raise groq_error
+
+
+def _run_agent_gemini(prompt: str, response_format):
+    """Fallback: Google Gemini, if GEMINI_API_KEY / GOOGLE_API_KEY is set."""
+    import os
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            temperature=0,
+            google_api_key=api_key,
+        )
+        agent = create_agent(model=llm, response_format=response_format)
+        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
+        return response["structured_response"]
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 # ============================================================
@@ -151,11 +191,6 @@ MODEL = "groq:openai/gpt-oss-120b"
 # ============================================================
 
 def run_job_analysis(job_description: str) -> JobAnalysis:
-    agent = create_agent(
-        model=MODEL,
-        response_format=JobAnalysis,
-    )
-
     prompt = f"""
 You are an AI Job Description Analysis specialist.
 
@@ -193,10 +228,7 @@ IMPORTANT:
   matching skills, skill gaps, or recommendation.
 """
 
-    response = agent.invoke(
-        {"messages": [{"role": "user", "content": prompt}]}
-    )
-    return response["structured_response"]
+    return _run_agent(prompt, JobAnalysis)
 
 
 # ============================================================
@@ -204,11 +236,6 @@ IMPORTANT:
 # ============================================================
 
 def run_match_analysis(analysis: JobAnalysis, user_profile: str) -> MatchAnalysis:
-    agent = create_agent(
-        model=MODEL,
-        response_format=MatchAnalysis,
-    )
-
     prompt = f"""
 You are a job candidate matching specialist.
 
@@ -246,10 +273,7 @@ Return:
 6. Recommendation reason
 """
 
-    response = agent.invoke(
-        {"messages": [{"role": "user", "content": prompt}]}
-    )
-    return response["structured_response"]
+    return _run_agent(prompt, MatchAnalysis)
 
 
 # ============================================================
@@ -261,11 +285,6 @@ def run_resume_optimization(
     match_analysis: MatchAnalysis,
     user_profile: str,
 ) -> ResumeOptimization:
-    agent = create_agent(
-        model=MODEL,
-        response_format=ResumeOptimization,
-    )
-
     prompt = f"""
 You are an expert resume optimization assistant.
 
@@ -323,10 +342,7 @@ Analyze:
   that outcome is explicitly supported by the resume.
 """
 
-    response = agent.invoke(
-        {"messages": [{"role": "user", "content": prompt}]}
-    )
-    return response["structured_response"]
+    return _run_agent(prompt, ResumeOptimization)
 
 
 # ============================================================

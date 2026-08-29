@@ -237,6 +237,7 @@ export function ResumeDocument({ data }: Props) {
       {!hasContent && (
         <div className="rd-empty">Start filling in the editor to see your resume here.</div>
       )}
+
     </div>
   );
 }

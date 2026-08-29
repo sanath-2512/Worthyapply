@@ -18,6 +18,7 @@ Rules the agent follows:
 """
 
 import io
+import os
 from typing import Optional
 from langchain.agents import create_agent
 from langchain_groq import ChatGroq
@@ -175,6 +176,10 @@ RULES:
 4. Preserve bullet points. For descriptions, output HTML using
    <ul><li>bullet one</li><li>bullet two</li></ul>. Each original
    bullet must be its own <li>. Do NOT merge bullets into one paragraph.
+   IMPORTANT: A line that starts with "Technologies:" is NOT a bullet.
+   Put its value ONLY in the separate "technologies" field and DO NOT
+   include it in the description. Never duplicate the technologies line
+   in both places.
 5. Extract actual hyperlink URLs. A section titled "HYPERLINKS FOUND IN
    DOCUMENT" may be appended at the end — these are the real URLs behind
    visible labels like "LinkedIn" or "GitHub". Match each URL to the
@@ -204,10 +209,22 @@ RULES:
     Achievements). Do not stop early. Every activity, hackathon, sport,
     and competitive-programming entry near the bottom must be captured as
     a separate activity item.
+14. BULLET ORDERING: Some PDFs place all the bullet points TOGETHER in a
+    block (often near the bottom), separate from their section headings,
+    and sometimes with the "•" symbol on its own line. Reconstruct which
+    bullets belong to which entry using their CONTENT and ORDER:
+    - Bullets about the internship's company/work go in that experience entry.
+    - Bullets that describe a named project (e.g. AgriMind, EduAI) go in
+      that project's description, in order.
+    - Do NOT dump all bullets into the first entry.
+    - Match bullets to entries by topic and the order they appear.
+15. Ignore any text after a "WA DATA B64" marker — that is machine data,
+    not resume content.
 
 RESUME TEXT:
 {resume_text}
 """
+
 
 
 def extract_resume(pdf_bytes: bytes) -> ExtractedResume:
@@ -215,11 +232,65 @@ def extract_resume(pdf_bytes: bytes) -> ExtractedResume:
     if not resume_text.strip():
         raise ValueError("Could not extract any text from the resume PDF.")
 
-    # Output room sized to stay under the free-tier 8000 TPM limit while
-    # still being enough to hold a full resume's structured JSON.
-    llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0, max_tokens=4000)
-    agent = create_agent(model=llm, response_format=ExtractedResume)
-    response = agent.invoke(
-        {"messages": [{"role": "user", "content": EXTRACTION_PROMPT.format(resume_text=resume_text)}]}
-    )
-    return response["structured_response"]
+    prompt = EXTRACTION_PROMPT.format(resume_text=resume_text)
+
+    # Primary: Groq. Fallback: Gemini (if Groq is rate-limited or errors).
+    try:
+        llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0, max_tokens=4000)
+        agent = create_agent(model=llm, response_format=ExtractedResume)
+        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
+        return _cleanup(response["structured_response"])
+    except Exception as groq_error:
+        gemini = _try_gemini(prompt)
+        if gemini is not None:
+            return _cleanup(gemini)
+        # No fallback available — surface the original error
+        raise groq_error
+
+
+def _cleanup(result: ExtractedResume) -> ExtractedResume:
+    """
+    Remove any 'Technologies:' line that leaked into a description so it
+    doesn't appear twice (once in description, once in the technologies field).
+    """
+    import re
+
+    def strip_tech(html: str) -> str:
+        if not html:
+            return html
+        # Remove <li>Technologies: ...</li> items
+        html = re.sub(r"<li>\s*Technologies\s*:.*?</li>", "", html, flags=re.IGNORECASE | re.DOTALL)
+        # Remove standalone "Technologies: ..." paragraphs/lines
+        html = re.sub(r"<p>\s*Technologies\s*:.*?</p>", "", html, flags=re.IGNORECASE | re.DOTALL)
+        # Clean up empty lists left behind
+        html = re.sub(r"<ul>\s*</ul>", "", html, flags=re.IGNORECASE)
+        return html.strip()
+
+    for exp in result.experience:
+        exp.description = strip_tech(exp.description)
+    for proj in result.projects:
+        proj.description = strip_tech(proj.description)
+
+    return result
+
+
+def _try_gemini(prompt: str) -> Optional[ExtractedResume]:
+    """Fallback extraction using Google Gemini, if GEMINI_API_KEY is set."""
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            temperature=0,
+            google_api_key=api_key,
+        )
+        agent = create_agent(model=llm, response_format=ExtractedResume)
+        response = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
+        return response["structured_response"]
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return None

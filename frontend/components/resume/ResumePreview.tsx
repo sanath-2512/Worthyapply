@@ -9,51 +9,23 @@ interface Props {
   data: ResumeData;
 }
 
-// A4 dimensions in px at 96dpi
-const A4_WIDTH_PX = 794; // 210mm
-const A4_HEIGHT_PX = 1123; // 297mm
+const A4_WIDTH_PX = 794; // 210mm @96dpi
+const A4_HEIGHT_PX = 1123; // 297mm @96dpi
 
 export function ResumePreview({ data }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const docRef = useRef<HTMLDivElement>(null);
-  const printRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [overflow, setOverflow] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  const handleDownload = async () => {
-    if (!printRef.current) return;
-    setDownloading(true);
-    try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const fileName = data.personal.fullName
-        ? `${data.personal.fullName.replace(/\s+/g, "_")}_Resume.pdf`
-        : "Resume.pdf";
-
-      const target = printRef.current.querySelector(".resume-doc") as HTMLElement | null;
-      if (!target) return;
-
-      await html2pdf()
-        .set({
-          margin: 0,
-          filename: fileName,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(target)
-        .save();
-    } catch (e) {
-      console.error(e);
-      // Fallback to print dialog if html2pdf fails
-      window.print();
-    } finally {
-      setDownloading(false);
-    }
+  const handleDownload = () => {
+    // Native print → "Save as PDF". Produces a small (~50KB) text-based PDF
+    // with selectable text (re-extractable) and clickable links.
+    window.print();
   };
 
   // Fit-to-width scaling
@@ -61,15 +33,14 @@ export function ResumePreview({ data }: Props) {
     const compute = () => {
       if (!containerRef.current) return;
       const available = containerRef.current.clientWidth - 48;
-      const fit = Math.min(available / A4_WIDTH_PX, 1);
-      setScale(fit);
+      setScale(Math.min(available / A4_WIDTH_PX, 1));
     };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  // Detect page overflow
+  // Overflow detection
   useEffect(() => {
     const el = docRef.current;
     if (!el) return;
@@ -106,19 +77,19 @@ export function ResumePreview({ data }: Props) {
 
           <button
             onClick={handleDownload}
-            disabled={!data.personal.fullName || downloading}
+            disabled={!data.personal.fullName}
             className="magnetic-btn text-sm font-semibold px-5 py-2 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 4px 16px rgba(108,99,255,0.2)" }}
           >
-            {downloading ? "Preparing..." : "Download PDF"}
+            Download PDF
           </button>
         </div>
       </div>
 
-      {/* On-screen scaled preview (hidden during print) */}
+      {/* On-screen scaled preview */}
       <div
         ref={containerRef}
-        className="rd-screen-only flex-1 overflow-auto rounded-xl p-6 flex justify-center"
+        className="flex-1 overflow-auto rounded-xl p-6 flex justify-center"
         style={{ background: "#3a3a42" }}
       >
         <div
@@ -141,15 +112,9 @@ export function ResumePreview({ data }: Props) {
         </div>
       </div>
 
-      {/* Off-screen full-size copy — used as the source for PDF generation.
-          Rendered (not display:none) so html2canvas can capture it, but
-          positioned off-screen so it's invisible to the user. */}
+      {/* Print-only copy — portaled to body. Only this shows when printing. */}
       {mounted && createPortal(
-        <div
-          ref={printRef}
-          aria-hidden="true"
-          style={{ position: "fixed", left: "-9999px", top: 0, width: "210mm", background: "#fff" }}
-        >
+        <div className="rd-print-only">
           <ResumeDocument data={data} />
         </div>,
         document.body

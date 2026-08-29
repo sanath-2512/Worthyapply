@@ -10,18 +10,18 @@
    ═══════════════════════════════════════════ */
 
 .resume-doc {
-  --gap-section: 7px;   /* between sections */
-  --gap-entry: 4px;     /* between entries within a section */
-  --gap-line: 1.5px;    /* between bullets / lines */
+  --gap-section: 6px;   /* between sections */
+  --gap-entry: 3.5px;   /* between entries within a section */
+  --gap-line: 1.3px;    /* between bullets / lines */
 
   width: 210mm;
   min-height: 297mm;
-  padding: 8mm 13mm;
+  padding: 7mm 12mm;
   background: #ffffff;
   color: #111111;
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 10pt;
-  line-height: 1.15;
+  font-size: 9.5pt;
+  line-height: 1.1;
   box-sizing: border-box;
 }
 
@@ -223,6 +223,28 @@
   display: none;
 }
 
+/* Machine-readable embedded data: invisible to the eye, present in the
+   PDF text layer. Rendered at the TOP so it always lands on page 1 and is
+   never split across a page break. Tiny white text = effectively invisible.
+   Must NOT use display:none / visibility:hidden (removes it from print). */
+.rd-embed {
+  font-size: 1px;
+  line-height: 1px;
+  color: #ffffff;
+  max-height: 2px;
+  overflow: hidden;
+  word-break: break-all;
+  user-select: none;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* The off-screen capture copy: content-height only (no forced A4 height)
+   so html2canvas doesn't capture extra whitespace -> avoids blank page 2. */
+[aria-hidden="true"] > .resume-doc {
+  min-height: 0 !important;
+}
+
 /* ══ PRINT ══ */
 @media print {
   @page { size: A4; margin: 0; }
@@ -241,9 +263,12 @@
   }
   .rd-print-only .resume-doc {
     width: 210mm;
-    min-height: auto;
+    min-height: 0 !important;   /* prevent forced full-page height -> blank page 2 */
+    height: auto !important;
     box-shadow: none !important;
-    margin: 0;
+    margin: 0 !important;
+    padding: 8mm 13mm !important;
+    overflow: hidden;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
