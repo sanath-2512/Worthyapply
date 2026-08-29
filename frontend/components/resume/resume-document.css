@@ -1,138 +1,121 @@
 /* ═══════════════════════════════════════════
    WORTHY CLASSIC — Canonical Resume Document
    Fixed A4 (210mm × 297mm). Powers preview + PDF.
-   One document grid: all sections share the same
-   left/right boundaries via the page padding.
    ═══════════════════════════════════════════ */
 
 .resume-doc {
   width: 210mm;
   min-height: 297mm;
-  padding: 11mm 14mm;
+  padding: 8mm 12mm;
   background: #ffffff;
   color: #111111;
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 10.5pt;
-  line-height: 1.3;
+  font-size: 10pt;
+  line-height: 1.25;
   box-sizing: border-box;
 }
 
-/* ══ HEADER (left-aligned, traditional) ══ */
+/* ══ HEADER ══ */
 .rd-header {
   text-align: left;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
 }
 .rd-name {
-  font-size: 18pt;
+  font-size: 16pt;
   font-weight: 700;
-  margin: 0 0 2px 0;
+  margin: 0 0 1px 0;
   letter-spacing: 0.2px;
   line-height: 1.1;
 }
 .rd-title {
-  font-size: 10.5pt;
-  color: #333;
-  margin-bottom: 3px;
-}
-.rd-contact-line {
   font-size: 10pt;
-  color: #222;
+  color: #333;
   margin-bottom: 2px;
 }
+.rd-contact-line {
+  font-size: 9pt;
+  color: #222;
+  margin-bottom: 1px;
+}
 .rd-links-line {
-  font-size: 10pt;
+  font-size: 9pt;
   margin-bottom: 0;
 }
-.rd-contact-plain {
-  color: #222;
-  text-decoration: none;
-}
-.rd-sep {
-  margin: 0 7px;
-  color: #888;
-}
-.rd-link-sep {
-  color: #888;
-  margin: 0 5px;
-}
-.rd-link {
-  color: #0b57d0;
-  text-decoration: none;
-}
+.rd-contact-plain { color: #222; text-decoration: none; }
+.rd-sep { margin: 0 5px; color: #888; }
+.rd-link-sep { color: #888; margin: 0 4px; }
+.rd-link { color: #0b57d0; text-decoration: none; }
 .rd-bold { font-weight: 700; }
 .rd-italic { font-style: italic; }
 
-/* ══ SECTIONS — consistent vertical rhythm ══ */
+/* ══ SECTIONS ══ */
 .rd-section {
-  margin-top: 8px;
+  margin-top: 5px;
 }
 .rd-section:first-of-type {
-  margin-top: 4px;
+  margin-top: 3px;
 }
 .rd-section-title {
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  margin: 0 0 4px 0;
-  padding-bottom: 2px;
-  border-bottom: 1px solid #111;
+  letter-spacing: 0.5px;
+  margin: 0 0 3px 0;
+  padding-bottom: 1px;
+  border-bottom: 0.8px solid #111;
 }
 
 /* ══ ENTRIES ══ */
 .rd-entry {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .rd-entry:last-child {
   margin-bottom: 0;
 }
-
-/* Deterministic two-column row: content left, meta right.
-   Date/location/grade share one right edge via flex. */
 .rd-entry-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 16px;
+  gap: 10px;
 }
 .rd-entry-title {
   font-weight: 700;
-  font-size: 10.5pt;
+  font-size: 10pt;
   flex: 1;
   min-width: 0;
 }
 .rd-entry-date,
 .rd-entry-meta {
-  font-size: 10pt;
+  font-size: 9pt;
   color: #333;
   white-space: nowrap;
   text-align: right;
   flex-shrink: 0;
 }
 .rd-entry-sub {
-  font-size: 10pt;
+  font-size: 9.5pt;
   flex: 1;
   min-width: 0;
 }
 .rd-entry-info {
-  font-size: 10pt;
+  font-size: 9.5pt;
   color: #333;
-  margin-top: 1px;
+  margin-top: 0;
 }
 
-/* ══ BULLETS — hanging indent via list ══ */
+/* ══ BULLETS ══ */
 .rd-bullets {
-  margin: 4px 0 0 0;
-  padding-left: 15px;
+  margin: 2px 0 0 0;
+  padding-left: 12px;
   list-style: none;
 }
 .rd-bullets li {
   position: relative;
-  padding-left: 13px;
-  margin-bottom: 2.5px;
-  font-size: 10pt;
-  line-height: 1.36;
+  padding-left: 10px;
+  margin-bottom: 1px;
+  font-size: 9.5pt;
+  line-height: 1.3;
   text-align: left;
 }
 .rd-bullets li::before {
@@ -140,57 +123,57 @@
   position: absolute;
   left: 0;
   top: 0;
-  font-size: 10pt;
+  font-size: 9.5pt;
 }
 
-/* ══ TECHNOLOGIES — aligns with bullet text ══ */
+/* ══ TECHNOLOGIES ══ */
 .rd-tech {
-  font-size: 10pt;
-  margin-top: 3px;
-  padding-left: 15px;
+  font-size: 9.5pt;
+  margin-top: 1px;
+  padding-left: 12px;
 }
 
 /* ══ PROJECT LINKS ══ */
 .rd-project-links {
   font-weight: 400;
-  font-size: 10pt;
+  font-size: 9.5pt;
 }
 
 /* ══ SKILLS ══ */
 .rd-skill-row {
-  font-size: 10pt;
-  margin-bottom: 2.5px;
-  line-height: 1.36;
+  font-size: 9.5pt;
+  margin-bottom: 1px;
+  line-height: 1.3;
 }
 .rd-skill-row:last-child { margin-bottom: 0; }
 
 /* ══ SUMMARY ══ */
 .rd-summary {
-  font-size: 10pt;
+  font-size: 9.5pt;
   margin: 0;
   text-align: justify;
-  line-height: 1.42;
+  line-height: 1.35;
 }
 
-/* ══ RICH TEXT rendered inside resume ══ */
+/* ══ RICH TEXT inside resume ══ */
 .rd-rich {
-  font-size: 10pt;
-  line-height: 1.38;
-  margin-top: 3px;
+  font-size: 9.5pt;
+  line-height: 1.3;
+  margin-top: 2px;
 }
 .rd-rich p {
-  margin: 0 0 3px 0;
+  margin: 0 0 1px 0;
 }
 .rd-rich p:last-child { margin-bottom: 0; }
 .rd-rich ul {
-  margin: 3px 0;
-  padding-left: 15px;
+  margin: 1px 0;
+  padding-left: 12px;
   list-style: none;
 }
 .rd-rich ul li {
   position: relative;
-  padding-left: 13px;
-  margin-bottom: 2.5px;
+  padding-left: 10px;
+  margin-bottom: 1px;
 }
 .rd-rich ul li::before {
   content: "•";
@@ -199,26 +182,22 @@
   top: 0;
 }
 .rd-rich ol {
-  margin: 3px 0;
-  padding-left: 20px;
+  margin: 1px 0;
+  padding-left: 16px;
   list-style: decimal;
 }
 .rd-rich ol li {
-  margin-bottom: 2.5px;
+  margin-bottom: 1px;
 }
-.rd-rich a {
-  color: #0b57d0;
-  text-decoration: none;
-}
+.rd-rich a { color: #0b57d0; text-decoration: none; }
 .rd-rich b, .rd-rich strong { font-weight: 700; }
 .rd-rich i, .rd-rich em { font-style: italic; }
 
 /* ══ ACTIVITIES ══ */
 .rd-activity {
-  font-size: 10pt;
-  line-height: 1.42;
-  margin-bottom: 3px;
-  text-align: justify;
+  font-size: 9.5pt;
+  line-height: 1.3;
+  margin-bottom: 2px;
 }
 
 .rd-empty {
@@ -229,26 +208,20 @@
   font-family: sans-serif;
 }
 
-/* Print-only copy is hidden on screen */
+/* Print-only copy hidden on screen */
 .rd-print-only {
   display: none;
 }
 
-/* ═══════════════════════════════════════════
-   PRINT — isolate the resume for clean PDF output
-   ═══════════════════════════════════════════ */
+/* ══ PRINT ══ */
 @media print {
-  @page {
-    size: A4;
-    margin: 0;
-  }
+  @page { size: A4; margin: 0; }
   html, body {
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
     height: auto !important;
   }
-  /* Hide the whole app; only the portaled print copy shows */
   body > *:not(.rd-print-only) {
     display: none !important;
   }
@@ -264,15 +237,7 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .rd-link {
-    color: #0b57d0 !important;
-  }
-  .rd-entry {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .rd-section-title {
-    break-after: avoid;
-    page-break-after: avoid;
-  }
+  .rd-link { color: #0b57d0 !important; }
+  .rd-entry { break-inside: avoid; page-break-inside: avoid; }
+  .rd-section-title { break-after: avoid; page-break-after: avoid; }
 }
