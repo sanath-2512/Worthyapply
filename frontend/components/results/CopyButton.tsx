@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "../ui/Icon";
 
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -23,7 +24,7 @@ export function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="text-[10px] font-medium px-2.5 py-1 rounded-lg transition-all duration-200"
+      className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all duration-200"
       style={{
         background: copied ? "var(--green-dim)" : "var(--bg-elevated)",
         color: copied ? "var(--green)" : "var(--text-muted)",
@@ -31,7 +32,8 @@ export function CopyButton({ text }: { text: string }) {
       }}
       aria-label={copied ? "Copied to clipboard" : "Copy improved bullet"}
     >
-      {copied ? "Copied ✓" : "Copy"}
+      <Icon name={copied ? "check" : "copy"} size={12} />
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 }

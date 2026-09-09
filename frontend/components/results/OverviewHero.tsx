@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   jobTitle: string;
@@ -13,6 +14,7 @@ interface Props {
   matched: number;
   gaps: number;
   total: number;
+  onScrollToTailor?: () => void;
 }
 
 export function OverviewHero({
@@ -25,6 +27,7 @@ export function OverviewHero({
   matched,
   gaps,
   total,
+  onScrollToTailor,
 }: Props) {
   const [animScore, setAnimScore] = useState(0);
 
@@ -58,8 +61,7 @@ export function OverviewHero({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.05 }}
-        className="text-center text-[10px] font-bold uppercase tracking-[0.3em] mb-8"
-        style={{ color: "var(--accent-bright)" }}
+        className="eyebrow text-center mb-8"
       >
         Application Intelligence
       </motion.p>
@@ -106,12 +108,12 @@ export function OverviewHero({
           {company} · {experience}
         </p>
         <span
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
+          className="pill"
           style={{ background: recBg, color: recColor }}
         >
-          {recommendation === "Apply" && "✓"}
-          {recommendation === "Maybe" && "~"}
-          {recommendation === "Do Not Apply" && "✕"}
+          {recommendation === "Apply" && <Icon name="check" size={13} />}
+          {recommendation === "Maybe" && <Icon name="alert" size={13} />}
+          {recommendation === "Do Not Apply" && <Icon name="x" size={13} />}
           {recommendation}
         </span>
       </motion.div>
@@ -139,6 +141,25 @@ export function OverviewHero({
           {reason}
         </p>
       </motion.div>
+
+      {/* Hero Action Button */}
+      {onScrollToTailor && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="text-center mt-8"
+        >
+          <button
+            onClick={onScrollToTailor}
+            className="btn btn-primary magnetic-btn"
+          >
+            <Icon name="sparkle" size={16} />
+            <span>Generate Tailored Resume</span>
+            <Icon name="arrow-right" size={16} className="opacity-70" />
+          </button>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
@@ -155,7 +176,7 @@ function Stat({ value, label, color }: { value: number; label: string; color: st
       >
         {value}
       </div>
-      <div className="text-[9px] font-medium uppercase tracking-wider mt-0.5" style={{ color: "var(--text-muted)" }}>
+      <div className="text-[10px] font-medium uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>
         {label}
       </div>
     </div>

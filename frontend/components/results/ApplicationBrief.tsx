@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AnalysisResponse } from "@/lib/types";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   data: AnalysisResponse;
@@ -60,17 +61,17 @@ Top Priority: ${topPriority}`;
         {/* Role */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Role</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>Role</span>
             <p className="text-lg font-bold mt-1" style={{ color: "var(--text)" }}>{ja.job_title}</p>
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{ja.company} · {ja.experience_required}</p>
           </div>
           <span
-            className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full"
+            className="pill shrink-0"
             style={{ background: recBg, color: recColor }}
           >
-            {ma.recommendation === "Apply" && "✓"}
-            {ma.recommendation === "Maybe" && "~"}
-            {ma.recommendation === "Do Not Apply" && "✕"}
+            {ma.recommendation === "Apply" && <Icon name="check" size={12} />}
+            {ma.recommendation === "Maybe" && <Icon name="alert" size={12} />}
+            {ma.recommendation === "Do Not Apply" && <Icon name="x" size={12} />}
             {ma.recommendation}
           </span>
         </div>
@@ -99,14 +100,15 @@ Top Priority: ${topPriority}`;
         {/* Copy */}
         <button
           onClick={handleCopy}
-          className="magnetic-btn w-full py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          className="btn magnetic-btn w-full"
           style={{
             background: copied ? "var(--green-dim)" : "var(--surface-elevated)",
             color: copied ? "var(--green)" : "var(--text-secondary)",
-            border: `1px solid ${copied ? "var(--green)" : "var(--border)"}`,
+            borderColor: copied ? "var(--green)" : "var(--border)",
           }}
         >
-          {copied ? "Copied ✓" : "Copy Brief"}
+          <Icon name={copied ? "check" : "copy"} size={15} />
+          {copied ? "Copied" : "Copy Brief"}
         </button>
       </div>
     </div>
@@ -117,7 +119,7 @@ function BriefStat({ label, value, color }: { label: string; value: string; colo
   return (
     <div className="text-center">
       <div className="text-xl font-bold tabular-nums" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>{value}</div>
-      <div className="text-[9px] font-medium uppercase tracking-wider mt-0.5" style={{ color: "var(--text-muted)" }}>{label}</div>
+      <div className="text-[10px] font-medium uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>{label}</div>
     </div>
   );
 }

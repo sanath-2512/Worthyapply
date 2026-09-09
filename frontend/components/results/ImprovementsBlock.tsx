@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { BulletImprovement } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   assessment: string;
   priorities: string[];
   bullets: BulletImprovement[];
   keywords: string[];
+  onScrollToTailor?: () => void;
 }
 
-export function ImprovementsBlock({ assessment, priorities, bullets, keywords }: Props) {
+export function ImprovementsBlock({ assessment, priorities, bullets, keywords, onScrollToTailor }: Props) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? bullets : bullets.slice(0, 3);
 
@@ -67,10 +69,10 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords }:
             {bullets.length > 3 && !showAll && (
               <button
                 onClick={() => setShowAll(true)}
-                className="mt-5 text-[11px] font-medium"
+                className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-medium"
                 style={{ color: "var(--accent-bright)" }}
               >
-                View all {bullets.length} improvements →
+                View all {bullets.length} improvements <Icon name="arrow-right" size={13} />
               </button>
             )}
           </div>
@@ -83,14 +85,42 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords }:
             {keywords.map((k) => (
               <span
                 key={k}
-                className="text-[11px] font-medium px-2.5 py-1 rounded-lg"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg"
                 style={{ background: "var(--green-dim)", color: "var(--green)" }}
               >
-                ✓ {k}
+                <Icon name="check" size={12} /> {k}
               </span>
             ))}
           </div>
         </div>
+
+        {/* Action prompt */}
+        {onScrollToTailor && (
+          <div
+            className="p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4"
+            style={{
+              background: "linear-gradient(135deg, rgba(108,99,255,0.08) 0%, rgba(5,5,7,0.4) 100%)",
+              borderColor: "rgba(108,99,255,0.25)",
+            }}
+          >
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                Ready to apply these optimizations?
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                Generate a tailored resume version incorporating these targeted bullets and keywords.
+              </p>
+            </div>
+            <button
+              onClick={onScrollToTailor}
+              className="btn btn-primary btn-sm magnetic-btn shrink-0"
+            >
+              <Icon name="sparkle" size={14} />
+              <span>Tailor Resume</span>
+              <Icon name="arrow-right" size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -104,7 +134,7 @@ function BulletCard({ bullet }: { bullet: BulletImprovement }) {
     >
       {/* Before */}
       <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border-subtle)" }}>
-        <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>
           Before
         </span>
         <p className="text-sm mt-2 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -115,7 +145,7 @@ function BulletCard({ bullet }: { bullet: BulletImprovement }) {
       {/* After */}
       <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border-subtle)", background: "var(--surface-elevated)" }}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--green)" }}>
+          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--green)" }}>
             After
           </span>
           <CopyButton text={bullet.improved} />

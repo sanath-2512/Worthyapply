@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   matching: string[];
@@ -95,7 +96,7 @@ export function SkillConstellation({ matching, gaps, niceToHave }: Props) {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 + i * 0.04, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute text-[8px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap -translate-x-1/2 -translate-y-1/2"
+            className="absolute text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap -translate-x-1/2 -translate-y-1/2"
             style={{
               left: `${node.x}%`,
               top: `${node.y}%`,
@@ -104,7 +105,11 @@ export function SkillConstellation({ matching, gaps, niceToHave }: Props) {
               border: node.type === "nice" ? "1px solid var(--border)" : "none",
             }}
           >
-            {node.type === "match" && "✓ "}{node.type === "gap" && "✕ "}{node.label}
+            <span className="inline-flex items-center gap-1">
+              {node.type === "match" && <Icon name="check" size={10} strokeWidth={2.5} />}
+              {node.type === "gap" && <Icon name="x" size={10} strokeWidth={2.5} />}
+              {node.label}
+            </span>
           </motion.div>
         ))}
       </div>

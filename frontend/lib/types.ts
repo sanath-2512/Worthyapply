@@ -1,3 +1,9 @@
+export interface AlternativeSkillGroup {
+  options: string[];
+  required: boolean;
+  note?: string;
+}
+
 export interface JobAnalysis {
   job_title: string;
   company: string;
@@ -8,6 +14,25 @@ export interface JobAnalysis {
   nice_to_have: string[];
   keywords: string[];
   summary: string;
+  // Requirement-aware fields (optional for backward compatibility)
+  employment_type?: string;
+  work_mode?: string;
+  job_location?: string;
+  required_skills?: string[];
+  alternative_skill_groups?: AlternativeSkillGroup[];
+  preferred_skills?: string[];
+  experience_requirements?: string[];
+  education_requirements?: string[];
+  other_requirements?: string[];
+}
+
+export interface RequirementAssessment {
+  requirement: string;
+  kind: "required" | "preferred" | "or_group" | "experience" | "education" | "other";
+  satisfied: "yes" | "partial" | "no";
+  evidence?: string;
+  points_awarded?: number;
+  max_points?: number;
 }
 
 export interface MatchAnalysis {
@@ -17,6 +42,9 @@ export interface MatchAnalysis {
   match_score: number;
   recommendation: "Apply" | "Maybe" | "Do Not Apply";
   recommendation_reason: string;
+  // Explainable scoring (optional for backward compatibility)
+  requirement_assessments?: RequirementAssessment[];
+  scoring_summary?: string;
 }
 
 export interface BulletImprovement {

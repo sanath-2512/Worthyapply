@@ -241,6 +241,79 @@ def extract_resume(pdf_bytes: bytes) -> ExtractedResume:
     return _cleanup(result)
 
 
+def extract_resume_streaming(pdf_bytes: bytes):
+    """
+    Token-streaming variant of extract_resume.
+
+    Yields event dicts:
+        {"type": "agent_started", "agent": "resume_importer"}
+        {"type": "agent_progress", "agent": "resume_importer", "message": ...}
+        {"type": "agent_token", "agent": "resume_importer", "text": "<delta>"}
+        {"type": "agent_output", "agent": "resume_importer", "data": {...}}
+        {"type": "agent_completed", "agent": "resume_importer"}
+        {"type": "agent_error", "agent": "resume_importer", "message": ...}
+        {"type": "pipeline_completed", "result": {...}}
+
+    Uses the SAME extraction prompt, SAME ExtractedResume schema, and SAME
+    _cleanup() as extract_resume. Only the delivery mechanism differs.
+    """
+    import logging
+    from .llm import stream_structured_llm
+
+    logger = logging.getLogger("worthyapply.resume_import")
+    AGENT = "resume_importer"
+
+    yield {"type": "agent_started", "agent": AGENT}
+    yield {"type": "agent_progress", "agent": AGENT, "message": "Reading your resume..."}
+
+    try:
+        resume_text = extract_resume_text_from_bytes(pdf_bytes)
+        if not resume_text.strip():
+            raise ValueError("Could not extract any text from the resume PDF.")
+    except ValueError as e:
+        logger.warning("resume import extraction failed: %s", e)
+        yield {"type": "agent_error", "agent": AGENT, "message": str(e)}
+        return
+    except Exception:
+        logger.exception("resume import extraction crashed")
+        yield {
+            "type": "agent_error",
+            "agent": AGENT,
+            "message": "Could not read your resume. Please try a different file.",
+        }
+        return
+
+    yield {
+        "type": "agent_progress",
+        "agent": AGENT,
+        "message": "Extracting and organizing your information...",
+    }
+
+    prompt = EXTRACTION_PROMPT.format(resume_text=resume_text)
+    try:
+        result = None
+        for item in stream_structured_llm(prompt, ExtractedResume):
+            if item["type"] == "token":
+                yield {"type": "agent_token", "agent": AGENT, "text": item["text"]}
+            elif item["type"] == "result":
+                result = item["value"]
+        if result is None:
+            raise ValueError("no result produced")
+        result = _cleanup(result)
+    except Exception:
+        logger.exception("resume import generation failed")
+        yield {
+            "type": "agent_error",
+            "agent": AGENT,
+            "message": "Could not read your resume. Please try again or build from scratch.",
+        }
+        return
+
+    yield {"type": "agent_output", "agent": AGENT, "data": result.model_dump()}
+    yield {"type": "agent_completed", "agent": AGENT}
+    yield {"type": "pipeline_completed", "result": result.model_dump()}
+
+
 def _cleanup(result: ExtractedResume) -> ExtractedResume:
     """
     Remove any 'Technologies:' line that leaked into a description so it

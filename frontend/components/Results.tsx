@@ -10,11 +10,18 @@ import { MatchBlock } from "./results/MatchBlock";
 import { ImprovementsBlock } from "./results/ImprovementsBlock";
 import { DetailsBlock } from "./results/DetailsBlock";
 import { ApplicationBrief } from "./results/ApplicationBrief";
+import { TailoredResumeAction } from "./results/TailoredResumeAction";
 import { Reveal } from "./results/Reveal";
+import { Icon } from "./ui/Icon";
+import { BackButton } from "./ui/BackButton";
+import { ThemeToggle } from "./ui/ThemeToggle";
 
 interface Props {
   data: AnalysisResponse;
   onReset: () => void;
+  onBack?: () => void;
+  resumeFile?: File | null;
+  jobDescription?: string;
 }
 
 const nav = [
@@ -22,10 +29,11 @@ const nav = [
   { id: "requirements", label: "Role" },
   { id: "match", label: "Your Fit" },
   { id: "improvements", label: "Optimization" },
+  { id: "tailor", label: "Tailor Resume" },
   { id: "brief", label: "Brief" },
 ];
 
-export function Results({ data, onReset }: Props) {
+export function Results({ data, onReset, onBack, resumeFile = null, jobDescription = "" }: Props) {
   const [active, setActive] = useState("overview");
   const obsRef = useRef<IntersectionObserver | null>(null);
 
@@ -58,16 +66,18 @@ export function Results({ data, onReset }: Props) {
         style={{ background: "rgba(5,5,7,0.92)", borderColor: "var(--border-subtle)" }}
       >
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--text)" }}>
+          <div className="flex items-center gap-3 md:gap-4">
+            {onBack && <BackButton label="Back" onFallback={onBack} className="!text-[11px]" />}
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--text)" }}>
               WorthyApply
             </span>
             <button
               onClick={onReset}
               className="text-[10px] font-medium transition-opacity hover:opacity-60"
               style={{ color: "var(--text-muted)" }}
+              aria-label="Start a new analysis"
             >
-              ← New
+              <span className="inline-flex items-center gap-1"><Icon name="refresh" size={12} /> New</span>
             </button>
           </div>
 
@@ -93,17 +103,35 @@ export function Results({ data, onReset }: Props) {
             ))}
           </div>
 
-          {/* Mobile */}
-          <div className="md:hidden">
-            <select
-              value={active}
-              onChange={(e) => scrollTo(e.target.value)}
-              className="text-[11px] rounded-lg px-2 py-1.5 border appearance-none"
-              style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}
-              aria-label="Navigate"
+          {/* Quick Tailor CTA + Theme + Mobile Nav */}
+          <div className="flex items-center gap-2.5">
+            <ThemeToggle />
+            <button
+              onClick={() => scrollTo("tailor")}
+              className="magnetic-btn px-3.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+              style={{
+                background: "var(--accent)",
+                color: "#fff",
+                boxShadow: "0 2px 14px rgba(108,99,255,0.35)",
+              }}
             >
-              {nav.map((n) => (<option key={n.id} value={n.id}>{n.label}</option>))}
-            </select>
+              <Icon name="sparkle" size={13} />
+              <span className="hidden sm:inline">Tailor Resume</span>
+              <span className="sm:hidden">Tailor</span>
+            </button>
+
+            {/* Mobile dropdown */}
+            <div className="md:hidden">
+              <select
+                value={active}
+                onChange={(e) => scrollTo(e.target.value)}
+                className="text-[11px] rounded-lg px-2 py-1.5 border appearance-none"
+                style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                aria-label="Navigate"
+              >
+                {nav.map((n) => (<option key={n.id} value={n.id}>{n.label}</option>))}
+              </select>
+            </div>
           </div>
         </div>
       </nav>
@@ -122,6 +150,7 @@ export function Results({ data, onReset }: Props) {
             matched={data.match_analysis.matching_skills.length}
             gaps={data.match_analysis.skill_gaps.length}
             total={data.match_analysis.required_skills.length}
+            onScrollToTailor={() => scrollTo("tailor")}
           />
         </section>
 
@@ -169,6 +198,18 @@ export function Results({ data, onReset }: Props) {
               priorities={data.resume_optimization.priority_improvements}
               bullets={data.resume_optimization.resume_bullet_improvements}
               keywords={data.resume_optimization.keywords_to_include}
+              onScrollToTailor={() => scrollTo("tailor")}
+            />
+          </Reveal>
+        </section>
+
+        {/* Tailored Resume (Action & Live Workbench) */}
+        <section id="tailor" className="pb-28">
+          <Reveal>
+            <TailoredResumeAction
+              data={data}
+              resumeFile={resumeFile}
+              jobDescription={jobDescription}
             />
           </Reveal>
         </section>

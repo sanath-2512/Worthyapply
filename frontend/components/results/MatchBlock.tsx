@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "../ui/Icon";
+
 interface Props {
   required: string[];
   matching: string[];
@@ -44,10 +46,10 @@ export function MatchBlock({ required, matching, gaps, score }: Props) {
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <h3
-            className="text-[10px] font-bold uppercase tracking-[0.15em] mb-4 flex items-center gap-1.5"
+            className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4 flex items-center gap-1.5"
             style={{ color: "var(--green)" }}
           >
-            ✓ You have ({matching.length})
+            <Icon name="check" size={13} /> You have ({matching.length})
           </h3>
           <div className="space-y-1.5">
             {matching.map((s) => (
@@ -56,7 +58,7 @@ export function MatchBlock({ required, matching, gaps, score }: Props) {
                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
                 style={{ background: "var(--green-dim)", color: "var(--green)" }}
               >
-                <span className="text-[10px]">✓</span> {s}
+                <Icon name="check" size={13} /> {s}
               </div>
             ))}
           </div>
@@ -64,10 +66,14 @@ export function MatchBlock({ required, matching, gaps, score }: Props) {
 
         <div>
           <h3
-            className="text-[10px] font-bold uppercase tracking-[0.15em] mb-4 flex items-center gap-1.5"
+            className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4 flex items-center gap-1.5"
             style={{ color: gaps.length > 0 ? "var(--amber)" : "var(--green)" }}
           >
-            {gaps.length > 0 ? `⚠ Gaps (${gaps.length})` : "✓ No gaps"}
+            {gaps.length > 0 ? (
+              <><Icon name="alert" size={13} /> Gaps ({gaps.length})</>
+            ) : (
+              <><Icon name="check" size={13} /> No gaps</>
+            )}
           </h3>
           {gaps.length > 0 ? (
             <div className="space-y-1.5">
@@ -77,7 +83,7 @@ export function MatchBlock({ required, matching, gaps, score }: Props) {
                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
                   style={{ background: "var(--amber-dim)", color: "var(--amber)" }}
                 >
-                  <span className="text-[10px]">✕</span> {s}
+                  <Icon name="x" size={13} /> {s}
                 </div>
               ))}
             </div>

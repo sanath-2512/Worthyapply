@@ -1,0 +1,631 @@
+{
+  "cases": [
+    {
+      "id": "01_strong_match",
+      "old": {
+        "latency_s": 15.64,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 9.58,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "02_weak_match",
+      "old": {
+        "latency_s": 11.1,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.64,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 0.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 0.8,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "03_partial_match",
+      "old": {
+        "latency_s": 9.82,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.76,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.75,
+        "match_score_absdiff": 10,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "04_missing_requirements",
+      "old": {
+        "latency_s": 12.28,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 6.71,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 10,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "05_tech_absent",
+      "old": {
+        "latency_s": 15.69,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.85,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 20,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "06_experience_absent",
+      "old": {
+        "latency_s": 15.35,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.34,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.0,
+        "match_score_absdiff": 30,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "07_irrelevant_experience",
+      "old": {
+        "latency_s": 11.11,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.41,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "08_different_industry",
+      "old": {
+        "latency_s": 10.47,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.46,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 0.75,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 0.75,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "09_junior_vs_senior",
+      "old": {
+        "latency_s": 7.73,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 30.33,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 0.67,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 0.67,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "10_long_resume",
+      "old": {
+        "latency_s": 14.4,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "schema_fail": true,
+        "error": "AllProvidersFailedError"
+      }
+    },
+    {
+      "id": "11_long_jd",
+      "old": {
+        "schema_fail": true,
+        "error": "AllProvidersFailedError"
+      },
+      "new": {
+        "schema_fail": true,
+        "error": "AllProvidersFailedError"
+      }
+    },
+    {
+      "id": "12_unusual_content",
+      "old": {
+        "latency_s": 10.31,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 4.08,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "13_many_requirements",
+      "old": {
+        "latency_s": 41.08,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 9.65,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 15,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "14_vague_requirements",
+      "old": {
+        "latency_s": 12.92,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 17.68,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 0.0,
+        "job_required_skills": 0.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 30,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "15_similar_not_identical",
+      "old": {
+        "latency_s": 8.71,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 4.25,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "16_or_group",
+      "old": {
+        "latency_s": 8.07,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.65,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 0.0,
+        "match_score_absdiff": 40,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "17_cert_absent",
+      "old": {
+        "latency_s": 13.41,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.6,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.0,
+        "match_score_absdiff": 100,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "18_soft_skills",
+      "old": {
+        "latency_s": 7.77,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.12,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.33,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "19_domain_absent",
+      "old": {
+        "latency_s": 11.72,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.38,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 30,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "20_typosquat_tech",
+      "old": {
+        "latency_s": 8.19,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 6.65,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 10,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "21_overlapping_partial",
+      "old": {
+        "latency_s": 13.62,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 5.87,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.67,
+        "match_score_absdiff": 5,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "22_no_skills_jd",
+      "old": {
+        "latency_s": 10.36,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.44,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "23_negated_skill",
+      "old": {
+        "latency_s": 8.6,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 6.01,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.67,
+        "match_score_absdiff": 47,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "24_parent_child_tech",
+      "old": {
+        "latency_s": 34.6,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.84,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 0.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "25_project_not_professional",
+      "old": {
+        "latency_s": 9.67,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.52,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 20,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "26_prompt_injection",
+      "old": {
+        "latency_s": 16.33,
+        "calls": 3,
+        "violations": [
+          "matched:aws",
+          "matched:kubernetes",
+          "matched:go"
+        ]
+      },
+      "new": {
+        "latency_s": 5.59,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 0.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.0,
+        "match_score_absdiff": 100,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "27_aspirational",
+      "old": {
+        "latency_s": 8.8,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 6.19,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 17,
+        "recommendation_same": false
+      }
+    },
+    {
+      "id": "28_equivalent_experience",
+      "old": {
+        "latency_s": 11.28,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 4.37,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "29_cert_in_progress",
+      "old": {
+        "latency_s": 7.45,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.11,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 0.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 1.0,
+        "match_skill_gaps": 1.0,
+        "match_score_absdiff": 0,
+        "recommendation_same": true
+      }
+    },
+    {
+      "id": "30_clearance",
+      "old": {
+        "latency_s": 8.4,
+        "calls": 3,
+        "violations": []
+      },
+      "new": {
+        "latency_s": 3.79,
+        "calls": 1,
+        "violations": []
+      },
+      "similarity": {
+        "job_technical_skills": 1.0,
+        "job_required_skills": 1.0,
+        "match_matching_skills": 0.0,
+        "match_skill_gaps": 0.0,
+        "match_score_absdiff": 70,
+        "recommendation_same": false
+      }
+    }
+  ],
+  "summary": {
+    "n": 30,
+    "old_avg_calls": 2.9,
+    "new_avg_calls": 0.93,
+    "old_avg_latency_s": 12.5,
+    "new_avg_latency_s": 6.2,
+    "latency_reduction_pct": 50.4,
+    "old_total_grounding_violations": 3,
+    "new_total_grounding_violations": 0,
+    "old_schema_failures": 1,
+    "new_schema_failures": 2
+  }
+}

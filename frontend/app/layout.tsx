@@ -7,14 +7,20 @@ export const metadata: Metadata = {
     "Understand the role. Know your fit. Strengthen your application.",
 };
 
+// Runs before first paint to set the theme on <html>, preventing a
+// light/dark flash. Priority: saved preference -> system -> default (dark).
+// Kept as a compact IIFE string; corrupt/missing values fall back safely.
+const THEME_INIT = `(function(){try{var k='worthyapply-theme';var s=localStorage.getItem(k);var t=(s==='light'||s==='dark')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

@@ -1,22 +1,42 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "./ui/Icon";
+import { BackButton } from "./ui/BackButton";
+import { ThemeToggle } from "./ui/ThemeToggle";
 
 interface Props {
   onAnalyze: (file: File, jobDescription: string) => void;
   error: string;
   onClearError: () => void;
+  onBack?: () => void;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Persist the typed job description so a reload on this screen doesn't lose it.
+const JD_DRAFT_KEY = "worthyapply_jd_draft_v1";
 
-export function Workspace({ onAnalyze, error, onClearError }: Props) {
+export function Workspace({ onAnalyze, error, onClearError, onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [jd, setJd] = useState("");
+  const [jd, setJd] = useState<string>("");
   const [dragOver, setDragOver] = useState(false);
   const [fileError, setFileError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Restore any saved JD draft after mount (client-only, avoids SSR mismatch).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(JD_DRAFT_KEY);
+      if (saved) setJd(saved);
+    } catch {}
+  }, []);
+
+  // Save the JD draft as the user types (restored above on reload).
+  const updateJd = useCallback((value: string) => {
+    setJd(value);
+    try { localStorage.setItem(JD_DRAFT_KEY, value); } catch {}
+  }, []);
 
   const validateFile = (f: File): string | null => {
     if (!f.name.toLowerCase().endsWith(".pdf")) return "Only PDF files are accepted.";
@@ -55,14 +75,20 @@ export function Workspace({ onAnalyze, error, onClearError }: Props) {
 
       {/* Header */}
       <header className="px-6 md:px-12 py-5 flex items-center justify-between border-b" style={{ borderColor: "var(--border-subtle)" }}>
-        <span className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--text)" }}>
-          WorthyApply
-        </span>
-        <div className="flex items-center gap-2">
-          {file && <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--green)" }} />}
-          <span className="text-[10px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
-            {file && jd.trim() ? "Ready" : file ? "Need JD" : "Waiting"}
+        <div className="flex items-center gap-4">
+          {onBack && <BackButton label="Back" onFallback={onBack} />}
+          <span className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--text)" }}>
+            WorthyApply
           </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {file && <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--green)" }} />}
+            <span className="text-[10px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+              {file && jd.trim() ? "Ready" : file ? "Need JD" : "Waiting"}
+            </span>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -85,9 +111,11 @@ export function Workspace({ onAnalyze, error, onClearError }: Props) {
                 className="mb-6 p-4 rounded-xl border"
                 style={{ background: "var(--red-dim)", borderColor: "rgba(255,0,102,0.2)" }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <p className="text-sm" style={{ color: "var(--red)" }}>{error}</p>
-                  <button onClick={onClearError} className="ml-3 opacity-60 hover:opacity-100" style={{ color: "var(--red)" }} aria-label="Dismiss">✕</button>
+                  <button onClick={onClearError} className="icon-btn shrink-0 opacity-70 hover:opacity-100" style={{ color: "var(--red)" }} aria-label="Dismiss error">
+                    <Icon name="x" size={16} />
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -116,8 +144,8 @@ export function Workspace({ onAnalyze, error, onClearError }: Props) {
                 <input ref={inputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                 {file ? (
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--green-dim)" }}>
-                      <span className="text-[10px] font-bold" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>✓</span>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--green-dim)", color: "var(--green)" }}>
+                      <Icon name="check" size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>{file.name}</p>
@@ -150,7 +178,7 @@ export function Workspace({ onAnalyze, error, onClearError }: Props) {
                 )}
               </div>
               <textarea
-                id="jd" value={jd} onChange={(e) => setJd(e.target.value)}
+                id="jd" value={jd} onChange={(e) => updateJd(e.target.value)}
                 placeholder="Paste the full job description here..."
                 rows={10}
                 className="w-full rounded-2xl p-5 text-sm leading-relaxed resize-y border transition-all duration-300 focus:outline-none focus:border-[var(--accent)]"
@@ -162,14 +190,10 @@ export function Workspace({ onAnalyze, error, onClearError }: Props) {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}>
               <button
                 onClick={handleSubmit} disabled={!canSubmit}
-                className={`magnetic-btn w-full py-4 rounded-2xl text-sm font-semibold transition-all duration-300 ${canSubmit ? "cursor-pointer" : "opacity-20 cursor-not-allowed"}`}
-                style={{
-                  background: canSubmit ? "var(--accent)" : "var(--border)",
-                  color: canSubmit ? "#fff" : "var(--text-muted)",
-                  boxShadow: canSubmit ? "0 8px 32px rgba(108, 99, 255, 0.25)" : "none",
-                }}
+                className="btn btn-primary btn-lg magnetic-btn w-full"
               >
-                Analyze Application →
+                Analyze Application
+                <Icon name="arrow-right" size={18} />
               </button>
             </motion.div>
           </div>

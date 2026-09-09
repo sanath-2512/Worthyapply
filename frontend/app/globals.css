@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
-:root {
+/* ============================================================
+   THEME TOKENS
+   Palette tokens are theme-scoped (light/dark); structural tokens
+   (spacing/radius/motion) are shared. Components read only these
+   variables, so theming is fully centralized here.
+   `data-theme` is set on <html> by an early inline script (no FOUC)
+   and toggled by the ThemeProvider. Default = dark.
+   ============================================================ */
+
+/* Dark theme (default) */
+:root,
+:root[data-theme="dark"] {
   --bg: #050507;
   --bg-elevated: #0a0a0e;
   --surface: #0f0f14;
@@ -12,21 +23,87 @@
   --text-muted: #4e4e5e;
   --accent: #6c63ff;
   --accent-bright: #8b83ff;
-  --accent-dim: rgba(108, 99, 255, 0.08);
+  --accent-dim: rgba(108, 99, 255, 0.10);
   --accent-glow: rgba(108, 99, 255, 0.15);
   --green: #3dd68c;
-  --green-dim: rgba(61, 214, 140, 0.08);
+  --green-dim: rgba(61, 214, 140, 0.10);
   --amber: #f5a623;
-  --amber-dim: rgba(245, 166, 35, 0.07);
+  --amber-dim: rgba(245, 166, 35, 0.10);
   --red: #f06;
-  --red-dim: rgba(255, 0, 102, 0.07);
+  --red-dim: rgba(255, 0, 102, 0.10);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 20px 50px -24px rgba(0, 0, 0, 0.6);
+  --shadow-accent: 0 8px 30px rgba(108, 99, 255, 0.28);
+  --noise-opacity: 0.025;
+  color-scheme: dark;
+}
+
+/* Light theme — intentionally designed, not an inversion.
+   Soft off-white base, layered surfaces, comfortable contrast. */
+:root[data-theme="light"] {
+  --bg: #f7f7fb;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-elevated: #f1f1f6;
+  --border: #e2e2ea;
+  --border-subtle: #ececf2;
+  --text: #14141a;
+  --text-secondary: #55556a;
+  --text-muted: #8a8a9c;
+  --accent: #5b52f0;
+  --accent-bright: #4a41d8;
+  --accent-dim: rgba(91, 82, 240, 0.08);
+  --accent-glow: rgba(91, 82, 240, 0.14);
+  --green: #129d63;
+  --green-dim: rgba(18, 157, 99, 0.10);
+  --amber: #b8730a;
+  --amber-dim: rgba(184, 115, 10, 0.10);
+  --red: #d81b60;
+  --red-dim: rgba(216, 27, 96, 0.10);
+
+  --shadow-card: 0 1px 2px rgba(20, 20, 40, 0.06);
+  --shadow-elevated: 0 20px 50px -24px rgba(20, 20, 40, 0.18);
+  --shadow-accent: 0 8px 30px rgba(91, 82, 240, 0.20);
+  --noise-opacity: 0.015;
+  color-scheme: light;
+}
+
+:root {
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius scale */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* Elevation (used sparingly) */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 20px 50px -24px rgba(0, 0, 0, 0.6);
+  --shadow-accent: 0 8px 30px rgba(108, 99, 255, 0.28);
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur: 220ms;
 }
 
 * { box-sizing: border-box; }
 
 html {
   scroll-behavior: smooth;
-  color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -46,6 +123,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: hidden;
+  /* Subtle theme cross-fade (skipped under reduced-motion via the rule above). */
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
 ::selection {
@@ -70,7 +149,7 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.025;
+  opacity: var(--noise-opacity, 0.025);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   z-index: 9999;
 }
@@ -86,3 +165,121 @@ body {
 .magnetic-btn:active {
   transform: translateY(0) scale(0.98);
 }
+
+/* ============================================================
+   Shared component classes — standardized appearance.
+   Purely presentational; components opt in via className.
+   ============================================================ */
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 0 var(--space-5);
+  height: 44px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease),
+    filter var(--dur-fast) var(--ease);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-sm { height: 36px; font-size: 0.8125rem; padding: 0 var(--space-4); }
+.btn-lg { height: 52px; font-size: 0.9375rem; padding: 0 var(--space-8); border-radius: var(--radius-lg); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+.btn-primary:not(:disabled):hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-primary:not(:disabled):active { transform: translateY(0) scale(0.98); }
+
+.btn-secondary {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+.btn-secondary:not(:disabled):hover { color: var(--text); border-color: var(--text-muted); transform: translateY(-1px); }
+.btn-secondary:not(:disabled):active { transform: translateY(0) scale(0.98); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:not(:disabled):hover { color: var(--text); background: var(--surface); }
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+/* Status pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-full);
+  line-height: 1;
+}
+
+/* Eyebrow / section label */
+.eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: var(--accent-bright);
+}
+
+/* Inputs */
+.field {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.875rem;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.field::placeholder { color: var(--text-muted); }
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* Icon sizing helper */
+.icon { flex-shrink: 0; }
+
+/* Ensure icon-only controls meet touch target on small screens */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.icon-btn:not(:disabled):hover { background: var(--surface); color: var(--text); }

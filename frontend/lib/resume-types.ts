@@ -132,6 +132,68 @@ export function hasText(html: string): boolean {
   return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
 }
 
+/** localStorage keys shared by the builder and the tailoring flow. */
+export const RESUME_STORAGE_KEY = "worthyapply_resume_v3";
+/** Backup of whatever resume was in the builder before a tailored version replaced it. */
+export const RESUME_BACKUP_KEY = "worthyapply_resume_v3_backup";
+/** Metadata (source + change summary) for a freshly-tailored resume. */
+export const TAILORED_META_KEY = "worthyapply_tailored_meta_v3";
+
+export interface TailoredMeta {
+  source: "tailored";
+  changes: { section: string; description: string }[];
+  createdAt: number;
+}
+
+/**
+ * Save a tailored resume into the builder's storage WITHOUT destroying the
+ * user's previous resume. Any existing builder resume is copied to a backup
+ * key first, so the original remains recoverable.
+ */
+export function saveTailoredResume(
+  tailored: Partial<ResumeData>,
+  changes: { section: string; description: string }[]
+): void {
+  try {
+    const existing = localStorage.getItem(RESUME_STORAGE_KEY);
+    if (existing) {
+      // Preserve the previous resume so it is never destructively lost.
+      localStorage.setItem(RESUME_BACKUP_KEY, existing);
+    }
+    const full = mergeExtracted(tailored);
+    localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(full));
+    const meta: TailoredMeta = { source: "tailored", changes, createdAt: Date.now() };
+    localStorage.setItem(TAILORED_META_KEY, JSON.stringify(meta));
+  } catch {
+    // localStorage may be unavailable (private mode / quota). The caller still
+    // navigates to the builder; worst case the user re-imports.
+  }
+}
+
+/** Read and consume the tailored metadata (returns null if none). */
+export function readTailoredMeta(): TailoredMeta | null {
+  try {
+    const raw = localStorage.getItem(TAILORED_META_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as TailoredMeta;
+  } catch {
+    return null;
+  }
+}
+
+/** Restore the pre-tailoring resume backup, if one exists. Returns true on success. */
+export function restoreResumeBackup(): boolean {
+  try {
+    const backup = localStorage.getItem(RESUME_BACKUP_KEY);
+    if (!backup) return false;
+    localStorage.setItem(RESUME_STORAGE_KEY, backup);
+    localStorage.removeItem(TAILORED_META_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Normalize a URL — ensure it has https:// prefix. */
 export function normalizeUrl(url: string): string {
   if (!url) return "";

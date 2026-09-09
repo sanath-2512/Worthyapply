@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   value: string;
@@ -77,7 +78,7 @@ export function RichTextEditor({ value, onChange, placeholder, minRows = 3 }: Pr
         </ToolbarBtn>
         <div className="rte-divider" />
         <ToolbarBtn label="Insert link" onClick={insertLink}>
-          <span style={{ fontSize: 12 }}>🔗</span>
+          <Icon name="link" size={13} />
         </ToolbarBtn>
       </div>
 

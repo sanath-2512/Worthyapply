@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ResumeData } from "@/lib/resume-types";
-import { extractResume, ApiError } from "@/lib/api";
+import { extractResumeStream, ApiError, PipelineEvent } from "@/lib/api";
+import { Icon } from "../ui/Icon";
+import { ThemeToggle } from "../ui/ThemeToggle";
 
 interface Props {
   onImported: (data: Partial<ResumeData>) => void;
@@ -13,22 +15,20 @@ interface Props {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const stages = [
-  "Uploading resume",
-  "Reading resume",
-  "Extracting information",
-  "Organizing your resume",
-  "Preparing the builder",
-];
-
 export function ResumeImport({ onImported, onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [stage, setStage] = useState(0);
+  const [statusMsg, setStatusMsg] = useState("Reading your resume...");
+  const [liveText, setLiveText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    // Cancel any in-flight stream if the component unmounts.
+    return () => abortRef.current?.abort();
+  }, []);
 
   const validate = (f: File): string | null => {
     if (!f.name.toLowerCase().endsWith(".pdf")) return "Only PDF files are accepted.";
@@ -50,44 +50,52 @@ export function ResumeImport({ onImported, onBack }: Props) {
     if (f) handleFile(f);
   }, [handleFile]);
 
-  const startStageAnimation = () => {
-    setStage(0);
-    let i = 0;
-    stageTimer.current = setInterval(() => {
-      i = Math.min(i + 1, stages.length - 2); // don't auto-advance to final
-      setStage(i);
-    }, 2500);
-  };
-
-  const stopStageAnimation = () => {
-    if (stageTimer.current) clearInterval(stageTimer.current);
+  const handleEvent = (event: PipelineEvent) => {
+    switch (event.type) {
+      case "agent_progress":
+        setStatusMsg(event.message);
+        break;
+      case "agent_token":
+        setLiveText((prev) => prev + event.text);
+        break;
+      default:
+        break;
+    }
   };
 
   const handleImport = async () => {
     if (!file) return;
     setProcessing(true);
     setError("");
-    startStageAnimation();
+    setLiveText("");
+    setStatusMsg("Reading your resume...");
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      const extracted = await extractResume(file);
-      stopStageAnimation();
-      setStage(stages.length - 1);
+      const extracted = await extractResumeStream(file, handleEvent, controller.signal);
       // brief pause so the user sees completion
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 300));
       onImported(extracted);
     } catch (err) {
-      stopStageAnimation();
+      if (controller.signal.aborted) return;
       setProcessing(false);
       setError(err instanceof ApiError ? err.message : "Could not read your resume. Please try again.");
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="px-4 md:px-8 py-4 border-b flex items-center gap-4" style={{ borderColor: "var(--border-subtle)" }}>
-        <Link href="/" className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--text)" }}>WorthyApply</Link>
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>/ Resume Builder / Import</span>
+      <header className="px-4 md:px-8 py-4 border-b flex items-center justify-between" style={{ borderColor: "var(--border-subtle)" }}>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--text)" }}>WorthyApply</Link>
+          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>/ Resume Builder / Import</span>
+        </div>
+        <ThemeToggle />
       </header>
 
       <div className="flex-1 flex items-center justify-center px-4 py-12">
@@ -100,8 +108,8 @@ export function ResumeImport({ onImported, onBack }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
               >
-                <button onClick={onBack} className="text-[11px] mb-6 transition-opacity hover:opacity-70" style={{ color: "var(--text-muted)" }}>
-                  ← Back
+                <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[11px] mb-6 transition-opacity hover:opacity-70" style={{ color: "var(--text-muted)" }}>
+                  <Icon name="arrow-left" size={13} /> Back
                 </button>
                 <h1 className="text-2xl font-bold tracking-tight mb-1" style={{ color: "var(--text)" }}>
                   Upload your resume
@@ -147,10 +155,10 @@ export function ResumeImport({ onImported, onBack }: Props) {
                 <button
                   onClick={handleImport}
                   disabled={!file}
-                  className="magnetic-btn w-full mt-6 py-3.5 rounded-2xl text-sm font-semibold transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{ background: "var(--accent)", color: "#fff", boxShadow: file ? "0 8px 32px rgba(108,99,255,0.25)" : "none" }}
+                  className="btn btn-primary btn-lg magnetic-btn w-full mt-6"
                 >
-                  Import Resume →
+                  Import Resume
+                  <Icon name="arrow-right" size={17} />
                 </button>
               </motion.div>
             ) : (
@@ -166,25 +174,27 @@ export function ResumeImport({ onImported, onBack }: Props) {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 />
-                <h2 className="text-lg font-semibold mb-6" style={{ color: "var(--text)" }}>
+                <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
                   Importing your resume
                 </h2>
-                <div className="space-y-2.5 text-left inline-block">
-                  {stages.map((s, i) => (
-                    <div key={s} className="flex items-center gap-3">
-                      <span
-                        className="w-4 h-4 rounded-full flex items-center justify-center text-[9px]"
-                        style={{
-                          background: i < stage ? "var(--green)" : i === stage ? "var(--accent)" : "var(--surface-elevated)",
-                          color: "#fff",
-                        }}
-                      >
-                        {i < stage ? "✓" : ""}
-                      </span>
-                      <span className="text-sm" style={{ color: i <= stage ? "var(--text-secondary)" : "var(--text-muted)" }}>{s}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-[12px] mb-5" style={{ color: "var(--text-muted)" }} aria-live="polite">
+                  {statusMsg}
+                </p>
+                {liveText && (
+                  <div
+                    className="mx-auto max-w-md text-left rounded-xl px-4 py-3 max-h-40 overflow-hidden text-[11px] leading-relaxed font-mono whitespace-pre-wrap break-words"
+                    style={{
+                      background: "var(--surface)",
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--border-subtle)",
+                    }}
+                    aria-live="polite"
+                  >
+                    {/* Show the streaming tail so the box stays anchored. */}
+                    {liveText.slice(-600)}
+                    <span className="inline-block w-1.5 h-3 ml-0.5 align-middle animate-pulse" style={{ background: "var(--accent)" }} />
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

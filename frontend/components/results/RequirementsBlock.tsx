@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   technical: string[];
@@ -43,8 +44,8 @@ export function RequirementsBlock({ technical, soft, responsibilities, keywords,
             {visible.map((r, i) => (
               <div key={i} className="flex items-start gap-3">
                 <span
-                  className="shrink-0 text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-md mt-0.5"
-                  style={{ background: "var(--surface-elevated)", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}
+                  className="shrink-0 text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-md mt-0.5"
+                  style={{ background: "var(--surface-elevated)", color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
@@ -57,10 +58,11 @@ export function RequirementsBlock({ technical, soft, responsibilities, keywords,
           {responsibilities.length > 5 && !expanded && (
             <button
               onClick={() => setExpanded(true)}
-              className="mt-3 text-[11px] font-medium"
+              className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium"
               style={{ color: "var(--accent-bright)" }}
             >
-              Show all {responsibilities.length} →
+              Show all {responsibilities.length}
+              <Icon name="arrow-right" size={13} />
             </button>
           )}
         </div>
@@ -146,7 +148,7 @@ function Collapsible({ title, children }: { title: string; children: React.React
         className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em]"
         style={{ color: "var(--text-muted)" }}
       >
-        <span className="transition-transform duration-150" style={{ transform: open ? "rotate(90deg)" : "rotate(0)" }}>▸</span>
+        <span className="inline-flex transition-transform duration-150" style={{ transform: open ? "rotate(90deg)" : "rotate(0)" }}><Icon name="chevron-right" size={14} /></span>
         {title}
       </button>
       {open && <div className="mt-3 ml-4">{children}</div>}

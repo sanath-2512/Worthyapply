@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   summary: string;
@@ -32,7 +33,7 @@ export function DetailsBlock({ summary, missing, warnings }: Props) {
             <div className="space-y-2.5">
               {missing.map((m, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                  <span style={{ color: "var(--amber)" }}>⚠</span>
+                  <span className="mt-0.5 shrink-0" style={{ color: "var(--amber)" }}><Icon name="alert" size={14} /></span>
                   <span>{m}</span>
                 </div>
               ))}
@@ -74,10 +75,10 @@ function Accordion({ title, children, defaultOpen = false }: { title: string; ch
           {title}
         </span>
         <span
-          className="text-[10px] transition-transform duration-200"
+          className="transition-transform duration-200"
           style={{ color: "var(--text-muted)", transform: open ? "rotate(180deg)" : "rotate(0)" }}
         >
-          ▾
+          <Icon name="chevron-down" size={16} />
         </span>
       </button>
       {open && (

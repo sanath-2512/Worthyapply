@@ -5,6 +5,7 @@ import {
   ResumeData, generateId,
 } from "@/lib/resume-types";
 import { RichTextEditor } from "./RichTextEditor";
+import { Icon } from "../ui/Icon";
 import "./rich-text.css";
 
 interface Props {
@@ -226,8 +227,8 @@ function Entry({ children, onRemove, onMove, index, total }: { children: React.R
     <div className="p-4 rounded-xl border mb-3" style={{ background: "var(--surface)", borderColor: "var(--border-subtle)" }}>
       <div className="flex justify-between items-center mb-3">
         <div className="flex gap-1">
-          <button onClick={() => onMove(-1)} disabled={index === 0} className="text-[11px] px-1.5 disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move up">↑</button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-[11px] px-1.5 disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move down">↓</button>
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="icon-btn disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move up"><Icon name="chevron-up" size={15} /></button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="icon-btn disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move down"><Icon name="chevron-down" size={15} /></button>
         </div>
         {!confirming ? (
           <button onClick={() => setConfirming(true)} className="text-[10px] px-2 py-0.5 rounded" style={{ color: "var(--red)", background: "var(--red-dim)" }}>Delete</button>

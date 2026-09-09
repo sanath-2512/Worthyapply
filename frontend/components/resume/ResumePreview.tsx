@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ResumeData } from "@/lib/resume-types";
 import { ResumeDocument } from "./ResumeDocument";
+import { Icon } from "../ui/Icon";
 
 interface Props {
   data: ResumeData;
@@ -62,8 +63,8 @@ export function ResumePreview({ data }: Props) {
             Worthy Classic
           </span>
           {overflow && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-md" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>
-              <span>⚠</span> Resume exceeds one page
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>
+              <Icon name="alert" size={13} /> Resume exceeds one page
             </span>
           )}
         </div>

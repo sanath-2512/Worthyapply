@@ -1,126 +1,30 @@
 """
-Shared multi-provider LLM factory with automatic fallback.
+Backward-compatible LLM entry point.
 
-Builds a single structured-output runnable that tries providers in order:
-    Groq → Gemini → OpenRouter → Mistral → Cohere
+This module used to build a Groq -> Gemini -> ... `.with_fallbacks()` chain. It is
+now a thin compatibility shim over the production-grade provider router in
+`backend/llm_router/`, which adds:
+  - hard per-provider wall-clock timeouts (a hung provider can no longer block for
+    minutes),
+  - per-provider health tracking + circuit breaker (a known-bad provider is skipped
+    on later requests instead of being retried from scratch),
+  - centralized error classification and error-specific cooldowns,
+  - deterministic health-aware provider selection,
+  - structured-output validation as a fallback trigger,
+  - streaming with a first-token timeout.
 
-Uses LangChain's .with_fallbacks() so when one provider errors (rate limit,
-quota exhausted, key invalid), it automatically moves to the next one.
-
-Every provider is configured to FAIL FAST (max_retries=0) so a dead provider
-doesn't stall the chain with internal backoff retries.
+The public functions below keep their original signatures so every existing call
+site (pipeline.py, resume_extractor.py, resume_tailor.py) works unchanged.
 """
 
-import os
-from typing import Optional
+from __future__ import annotations
 
+from typing import Iterator
 
-def _groq():
-    key = os.getenv("GROQ_API_KEY")
-    if not key:
-        return None
-    try:
-        from langchain_groq import ChatGroq
-        return ChatGroq(
-            model="openai/gpt-oss-120b",
-            temperature=0,
-            max_tokens=8000,
-            max_retries=0,
-            api_key=key,
-        )
-    except Exception:
-        return None
+from .llm_router import (  # re-export
+    get_structured_llm,
+    stream_structured_llm,
+    get_router,
+)
 
-
-def _gemini():
-    key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not key:
-        return None
-    try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(
-            model="gemini-flash-latest",
-            temperature=0,
-            max_output_tokens=8192,
-            max_retries=0,
-            google_api_key=key,
-        )
-    except Exception:
-        return None
-
-
-def _openrouter():
-    key = os.getenv("OPENROUTER_API_KEY")
-    if not key:
-        return None
-    try:
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
-            model="z-ai/glm-5.2:free",
-            temperature=0,
-            max_tokens=8000,
-            max_retries=0,
-            api_key=key,
-            base_url="https://openrouter.ai/api/v1",
-        )
-    except Exception:
-        return None
-
-
-def _mistral():
-    key = os.getenv("MISTRAL_API_KEY") or os.getenv("MISTIRAL_API_KEY")
-    if not key:
-        return None
-    try:
-        from langchain_mistralai import ChatMistralAI
-        return ChatMistralAI(
-            model="mistral-small-latest",
-            temperature=0,
-            max_retries=0,
-            api_key=key,
-        )
-    except Exception:
-        return None
-
-
-def _cohere():
-    key = os.getenv("COHERE_API_KEY")
-    if not key:
-        return None
-    try:
-        from langchain_cohere import ChatCohere
-        return ChatCohere(
-            model="command-r",
-            temperature=0,
-            cohere_api_key=key,
-        )
-    except Exception:
-        return None
-
-
-# Order: fastest/most-reliable first, then fallbacks.
-_PROVIDER_BUILDERS = [_groq, _gemini, _openrouter, _mistral, _cohere]
-
-
-def get_structured_llm(response_format):
-    """
-    Return a runnable that produces `response_format` structured output,
-    with automatic fallback across all configured providers.
-    Raises RuntimeError if no provider is configured.
-    """
-    llms = []
-    for build in _PROVIDER_BUILDERS:
-        llm = build()
-        if llm is not None:
-            try:
-                llms.append(llm.with_structured_output(response_format))
-            except Exception:
-                continue
-
-    if not llms:
-        raise RuntimeError("No LLM provider configured. Set at least one API key.")
-
-    primary = llms[0]
-    if len(llms) > 1:
-        return primary.with_fallbacks(llms[1:])
-    return primary
+__all__ = ["get_structured_llm", "stream_structured_llm", "get_router"]
