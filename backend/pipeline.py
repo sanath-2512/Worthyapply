@@ -849,6 +849,92 @@ def _filter_non_skills(items: list[str]) -> list[str]:
     return [it for it in (items or []) if not _looks_like_non_skill(it)]
 
 
+def _norm_skill(s: str) -> str:
+    """Normalize a skill name for matching/dedup: lowercase, strip, collapse
+    whitespace, drop trailing 'skills'/'principles', and unify common aliases so
+    'JS' == 'JavaScript', 'Postgres' == 'PostgreSQL', 'K8s' == 'Kubernetes'."""
+    t = " ".join((s or "").strip().lower().split())
+    for suffix in (" skills", " skill", " principles", " development"):
+        if t.endswith(suffix):
+            t = t[: -len(suffix)].strip()
+    aliases = {
+        "js": "javascript",
+        "ts": "typescript",
+        "postgres": "postgresql",
+        "k8s": "kubernetes",
+        "rest api": "rest apis",
+        "api": "apis",
+        "node": "node.js",
+        "nodejs": "node.js",
+        "reactjs": "react",
+        "react.js": "react",
+    }
+    return aliases.get(t, t)
+
+
+def _dedup_skills(items: list[str]) -> list[str]:
+    """Dedup a skill list by normalized form, preserving first-seen original casing."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for it in items or []:
+        key = _norm_skill(it)
+        if key and key not in seen:
+            seen.add(key)
+            out.append(it.strip())
+    return out
+
+
+def _reconcile_skill_sets(ja: "JobAnalysis", ma: "MatchAnalysis") -> None:
+    """
+    Make required / matched / gaps mutually consistent (mutates ma in place).
+
+    Problem this fixes: the LLM emits required_skills, matching_skills, skill_gaps and
+    technical_skills as INDEPENDENT lists that use different names and don't reconcile,
+    so the UI shows gaps that aren't in the skills list and matched+gaps != required.
+
+    Deterministic rule:
+      - Canonical REQUIRED set = required_skills ∪ (required OR-group options).
+        (technical_skills is the JD's broader skill vocabulary, used only to enrich
+        naming, not to force extra gaps.)
+      - A required skill is MATCHED if the model listed it in matching_skills OR an
+        assessment for it is matched/partial; otherwise it is a GAP.
+      - matched + gaps therefore always partition the required set exactly.
+    """
+    # Canonical required set (clean, deduped).
+    required_raw = _filter_non_skills(list(ma.required_skills) + list(ja.required_skills))
+    for grp in ja.alternative_skill_groups:
+        if grp.required and grp.options:
+            # Represent an OR-group by its first clean option (any one satisfies it).
+            required_raw.append(grp.options[0])
+    required = _dedup_skills(required_raw)
+    if not required:
+        # Nothing structured to reconcile against — leave lists filtered as-is.
+        return
+
+    # Evidence of what is satisfied: model's matching_skills + matched/partial assessments.
+    satisfied_norms: set[str] = {_norm_skill(s) for s in ma.matching_skills}
+    for a in ma.requirement_assessments or []:
+        if a.match_status in ("matched", "partial"):
+            satisfied_norms.add(_norm_skill(a.requirement))
+            # OR-group evidence often names the satisfied option in `evidence`.
+            if a.evidence:
+                satisfied_norms.add(_norm_skill(a.evidence))
+
+    matched: list[str] = []
+    gaps: list[str] = []
+    for skill in required:
+        n = _norm_skill(skill)
+        # matched if the skill (or an alias/option of it) shows up in satisfied evidence
+        if n in satisfied_norms or any(n in sn or sn in n for sn in satisfied_norms if sn):
+            matched.append(skill)
+        else:
+            gaps.append(skill)
+
+    ma.required_skills = required
+    ma.matching_skills = matched
+    ma.skill_gaps = gaps
+
+
 def _postprocess_combined(combined: CombinedAnalysis) -> CombinedAnalysis:
     """
     Deterministic post-processing applied in Python (no extra LLM call):
@@ -879,6 +965,14 @@ def _postprocess_combined(combined: CombinedAnalysis) -> CombinedAnalysis:
     ma.required_skills = _filter_non_skills(ma.required_skills)
     ma.matching_skills = _filter_non_skills(ma.matching_skills)
     ma.skill_gaps = _filter_non_skills(ma.skill_gaps)
+
+    # Dedup the JD skill vocab shown as chips so names don't repeat under aliases.
+    ja.technical_skills = _dedup_skills(ja.technical_skills)
+    ja.nice_to_have = _dedup_skills(ja.nice_to_have)
+
+    # Reconcile required / matched / gaps into a single consistent set so the UI never
+    # shows a gap that isn't a required skill, and matched + gaps == required.
+    _reconcile_skill_sets(ja, ma)
 
     if assessments:
         score, summary = compute_match_score(assessments)
