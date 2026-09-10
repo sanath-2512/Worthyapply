@@ -142,6 +142,8 @@ export const TAILORED_META_KEY = "worthyapply_tailored_meta_v3";
 export interface TailoredMeta {
   source: "tailored";
   changes: { section: string; description: string }[];
+  addedSkills?: string[];
+  message?: string;
   createdAt: number;
 }
 
@@ -152,7 +154,9 @@ export interface TailoredMeta {
  */
 export function saveTailoredResume(
   tailored: Partial<ResumeData>,
-  changes: { section: string; description: string }[]
+  changes: { section: string; description: string }[],
+  addedSkills?: string[],
+  message?: string
 ): void {
   try {
     const existing = localStorage.getItem(RESUME_STORAGE_KEY);
@@ -162,7 +166,13 @@ export function saveTailoredResume(
     }
     const full = mergeExtracted(tailored);
     localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(full));
-    const meta: TailoredMeta = { source: "tailored", changes, createdAt: Date.now() };
+    const meta: TailoredMeta = {
+      source: "tailored",
+      changes,
+      addedSkills: addedSkills || [],
+      message: message || "Skills and recommendations were added directly to your resume. If you don't have this in your tech stack, you can remove it here.",
+      createdAt: Date.now()
+    };
     localStorage.setItem(TAILORED_META_KEY, JSON.stringify(meta));
   } catch {
     // localStorage may be unavailable (private mode / quota). The caller still

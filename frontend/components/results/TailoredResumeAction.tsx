@@ -35,6 +35,8 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
   const [statusMsg, setStatusMsg] = useState("Tailoring your resume to this job...");
   const [changes, setChanges] = useState<ResumeChange[]>([]);
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
+  const [gapsToAdd, setGapsToAdd] = useState<string[]>([]);
+  const [addedSkills, setAddedSkills] = useState<string[]>([]);
   const [tailoredResume, setTailoredResume] = useState<ResumeData | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>("preview");
   const [error, setError] = useState("");
@@ -76,6 +78,8 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
     setLiveText("");
     setChanges([]);
     setRecommendations([]);
+    setGapsToAdd([]);
+    setAddedSkills([]);
     setTailoredResume(null);
     setStatusMsg("Tailoring your resume to this job...");
 
@@ -95,12 +99,16 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
       if (!result || !result.resume || typeof result.resume !== "object") {
         throw new ApiError("The tailored resume was incomplete. Please try again.", 0);
       }
+      const newAddedSkills = result.added_skills || result.gaps_to_add || [];
+      const msg = result.added_skills_message || "All recommendations and target skills were added directly into your resume. If you don't have this in your tech stack, you can remove it in the editor.";
       // Persist as a NEW version; the original builder resume is backed up inside.
-      saveTailoredResume(result.resume, result.changes || []);
+      saveTailoredResume(result.resume, result.changes || [], newAddedSkills, msg);
       const merged = mergeExtracted(result.resume);
       setTailoredResume(merged);
       setChanges(result.changes || []);
       setRecommendations(result.recommendations || []);
+      setAddedSkills(newAddedSkills);
+      setGapsToAdd(newAddedSkills);
       setPhase("done");
       setViewTab("preview");
     } catch (err) {
@@ -236,6 +244,61 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
                   >
                     <Icon name="refresh" size={14} />
                     Regenerate
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Added Skills & Recommendations Notice Banner */}
+            <div
+              className="rounded-2xl p-5 md:p-6 border"
+              style={{
+                background: "linear-gradient(135deg, rgba(108,99,255,0.08) 0%, rgba(0,200,120,0.07) 100%)",
+                borderColor: "rgba(108,99,255,0.28)",
+              }}
+            >
+              <div className="flex items-start gap-3.5">
+                <span
+                  className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center mt-0.5"
+                  style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}
+                >
+                  <Icon name="sparkle" size={18} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>
+                    Recommendations & Skills Added Directly
+                  </h4>
+                  <p className="text-[12px] leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>
+                    All recommendations and target skills for this job were added directly into your tailored resume.
+                    <span className="block mt-1 font-semibold" style={{ color: "var(--accent-bright)" }}>
+                      If you don&apos;t have any of these in your tech stack, you can easily remove or adjust them in the editor.
+                    </span>
+                  </p>
+                  {addedSkills.length > 0 && (
+                    <div className="space-y-1.5 mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                        Added Skills & Technologies:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {addedSkills.map((s) => (
+                          <span
+                            key={s}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                            style={{
+                              background: "var(--surface)",
+                              color: "var(--text)",
+                              border: "1px solid var(--border)",
+                            }}
+                          >
+                            <Icon name="check" size={12} style={{ color: "var(--green)" }} /> {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={goToEditor} className="btn btn-secondary btn-sm mt-1">
+                    <Icon name="pencil" size={14} />
+                    <span>Review / Remove in Editor</span>
                   </button>
                 </div>
               </div>

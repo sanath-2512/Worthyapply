@@ -32,6 +32,11 @@ export interface TailoredResumeResult {
   resume: Partial<ResumeData>;
   changes: ResumeChange[];
   recommendations?: RecommendationResult[];
+  /** Skills and technologies added directly to the resume to match the job */
+  added_skills?: string[];
+  added_skills_message?: string;
+  message?: string;
+  gaps_to_add?: string[];
 }
 
 export type PipelineEvent =

@@ -185,9 +185,34 @@ export default function BuilderPage() {
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold inline-flex items-start gap-1.5" style={{ color: "var(--accent-bright)" }}>
                   <span className="mt-0.5 shrink-0"><Icon name="sparkle" size={14} /></span>
-                  <span>Tailored resume generated from your original resume and the job description.
-                  Review and edit everything before applying.</span>
+                  <span>
+                    Tailored resume generated: All recommendations and required skills were added directly into your resume.
+                    If you don&apos;t have any of these in your tech stack, you can easily remove or adjust them here before exporting.
+                  </span>
                 </p>
+
+                {tailoredMeta.addedSkills && tailoredMeta.addedSkills.length > 0 && (
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                      Added skills:
+                    </span>
+                    {tailoredMeta.addedSkills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium"
+                        style={{
+                          background: "var(--surface)",
+                          color: "var(--text)",
+                          border: "1px solid var(--border-subtle)",
+                        }}
+                      >
+                        <Icon name="check" size={10} style={{ color: "var(--green)" }} />
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {tailoredMeta.changes.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {tailoredMeta.changes.map((c, i) => (

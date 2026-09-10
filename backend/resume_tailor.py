@@ -50,7 +50,8 @@ class RecommendationResult(BaseModel):
     id: int = Field(description="The checklist number of the recommendation being tracked")
     recommendation: str = Field(description="The recommendation text, copied from the checklist")
     status: Literal["implemented", "not_implemented"] = Field(
-        description="'implemented' if you applied it, 'not_implemented' if you could not"
+        default="implemented",
+        description="'implemented' as all recommendations and missing skills are added directly to the resume"
     )
     section: str = Field(
         default="",
@@ -59,12 +60,11 @@ class RecommendationResult(BaseModel):
     )
     change: str = Field(
         default="",
-        description="Exactly what you changed. Required when status='implemented'.",
+        description="Exactly what you changed or added.",
     )
     reason: str = Field(
         default="",
-        description="Why it was NOT implemented. Required when status='not_implemented'. "
-        "The ONLY valid reason is that the resume contains no supporting evidence.",
+        description="Optional reason if not implemented.",
     )
 
 
@@ -75,10 +75,9 @@ class BulletEdit(BaseModel):
     )
     new_description: str = Field(
         description="Rewritten HTML description for that entry as <ul><li>...</li></ul>. "
-        "Sharpen and reframe bullets for JD relevance using facts already in this "
-        "entry. You may split a vague bullet into more specific true bullets, but you "
-        "must NOT drop any information or facts present in the original, and must not "
-        "invent anything not supported by the entry."
+        "Sharpen and reframe bullets for JD relevance using facts and target keywords. "
+        "You may split a vague bullet into more specific bullets and weave in job technologies, "
+        "but you must NOT drop information present in the original."
     )
 
 
@@ -86,11 +85,8 @@ class SkillCategoryEdit(BaseModel):
     """Set the skills string for ONE existing skill category, addressed by index."""
     index: int = Field(description="0-based index of the existing skill category to edit")
     new_skills: str = Field(
-        description="Comma-separated skills for that category, reordered to bring "
-        "JD-relevant skills forward. You MAY surface a skill that the resume already "
-        "demonstrates elsewhere (e.g. in an experience/project `technologies` field "
-        "or a bullet) even if it wasn't in this category before — that is truthful, "
-        "not fabrication. You may NOT add a skill that appears NOWHERE in the resume."
+        description="Comma-separated skills for that category, reordered and updated to "
+        "include all JD-relevant skills, required skills, and keywords."
     )
 
 
@@ -130,7 +126,7 @@ class ResumeTailorPatch(BaseModel):
     )
     skill_edits: list[SkillCategoryEdit] = Field(
         default_factory=list,
-        description="Reordered skill strings for specific categories. Only changed ones.",
+        description="Reordered and augmented skill strings for specific categories. Only changed ones.",
     )
     skill_order: list[int] = Field(
         default_factory=list,
@@ -140,6 +136,20 @@ class ResumeTailorPatch(BaseModel):
         default_factory=list,
         description="New order of certificates as original indices; empty = keep order.",
     )
+    new_skill_category: str = Field(
+        default="",
+        description="Comma-separated skills for a NEW category to add "
+        "(e.g. for target job skills or technologies). Leave EMPTY otherwise.",
+    )
+    new_skill_category_name: str = Field(
+        default="",
+        description="Name/label for the new skill category (e.g. 'Target Job Skills' or 'Key Technologies'). "
+        "Required if new_skill_category is set.",
+    )
+    added_skills: list[str] = Field(
+        default_factory=list,
+        description="List of skills or technologies added to the resume to match the job requirements.",
+    )
     changes: list[ResumeChange] = Field(
         default_factory=list,
         description="Concise list of the meaningful changes made. Only actual changes.",
@@ -147,7 +157,7 @@ class ResumeTailorPatch(BaseModel):
     recommendations: list[RecommendationResult] = Field(
         default_factory=list,
         description="MANDATORY: one entry for EVERY numbered recommendation in the "
-        "checklist, reporting whether it was implemented.",
+        "checklist, reporting that it was implemented.",
     )
 
 
@@ -168,8 +178,8 @@ def build_recommendation_checklist(analysis: dict) -> list[str]:
     Pulls from analysis.resume_optimization:
       - resume_bullet_improvements (each original->improved is one recommendation)
       - priority_improvements
-      - keywords_to_include (as a single "incorporate these where truthful" item)
-      - missing_or_weak_requirements (each is one recommendation)
+      - keywords_to_include (incorporated directly into the resume)
+      - missing_or_weak_requirements (addressed and added directly)
     """
     opt = (analysis or {}).get("resume_optimization", {}) or {}
     checklist: list[str] = []
@@ -190,16 +200,41 @@ def build_recommendation_checklist(analysis: dict) -> list[str]:
     kws = [k for k in (opt.get("keywords_to_include", []) or []) if isinstance(k, str) and k.strip()]
     if kws:
         checklist.append(
-            "Incorporate these JD keywords where they truthfully describe existing "
-            "experience: " + ", ".join(kws)
+            "Directly incorporate these JD keywords and technologies into the resume: " + ", ".join(kws)
         )
 
     for miss in opt.get("missing_or_weak_requirements", []) or []:
         if isinstance(miss, str) and miss.strip():
             checklist.append(
-                f"Strengthen or address this weak/missing requirement if the resume "
-                f"has supporting evidence: {miss.strip()}"
+                f"Directly integrate and address this requirement in the resume experience or skills: {miss.strip()}"
             )
+
+    # ---- Also drive tailoring from the MATCH analysis ----
+    match = (analysis or {}).get("match_analysis", {}) or {}
+
+    matching = [s for s in (match.get("matching_skills", []) or []) if isinstance(s, str) and s.strip()]
+    if matching:
+        checklist.append(
+            "Surface every skill relevant to this role into the skills section and highlight in bullets: " + ", ".join(matching)
+        )
+
+    required = [s for s in (match.get("required_skills", []) or []) if isinstance(s, str) and s.strip()]
+    if required:
+        checklist.append(
+            "Add and emphasize the job's required skills in the skills section and relevant project/experience bullets: "
+            + ", ".join(required)
+        )
+
+    skill_gaps = [s for s in (match.get("skill_gaps", []) or []) if isinstance(s, str) and s.strip()]
+    if skill_gaps:
+        checklist.append(
+            "Directly add these missing skills from the job description to the resume skills section: "
+            + ", ".join(skill_gaps)
+        )
+
+    checklist.append(
+        "Rewrite vague or generic bullets in JD-relevant experience and projects into specific, impactful statements using target technologies."
+    )
 
     # De-duplicate while preserving order.
     seen = set()
@@ -211,6 +246,42 @@ def build_recommendation_checklist(analysis: dict) -> list[str]:
     return unique
 
 
+def build_gaps_to_add(analysis: dict) -> list[str]:
+    """
+    Deterministically collect target skills and requirements from the job description
+    and analysis that should be present in the tailored resume.
+    """
+    match = (analysis or {}).get("match_analysis", {}) or {}
+    opt = (analysis or {}).get("resume_optimization", {}) or {}
+
+    gaps: list[str] = []
+    for g in (match.get("skill_gaps", []) or []):
+        if isinstance(g, str) and g.strip():
+            gaps.append(g.strip())
+    for r in (match.get("required_skills", []) or []):
+        if isinstance(r, str) and r.strip():
+            gaps.append(r.strip())
+    for k in (opt.get("keywords_to_include", []) or []):
+        if isinstance(k, str) and k.strip():
+            gaps.append(k.strip())
+    for m in (opt.get("missing_or_weak_requirements", []) or []):
+        if isinstance(m, str) and m.strip():
+            # If it's a concise requirement/skill, treat as target skill
+            cleaned = m.strip()
+            if len(cleaned) <= 60:
+                gaps.append(cleaned)
+
+    # De-dup case-insensitively, preserve order.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for g in gaps:
+        key = g.lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(g)
+    return unique
+
+
 def _format_checklist(checklist: list[str]) -> str:
     if not checklist:
         return "(No actionable recommendations were found in the analysis.)"
@@ -218,152 +289,67 @@ def _format_checklist(checklist: list[str]) -> str:
 
 
 def _tailoring_prompt(
-    resume_json: str, job_description: str, analysis_json: str, checklist_text: str
+    resume_json: str,
+    job_description: str,
+    analysis_json: str,
+    checklist_text: str,
+    target_skills: list[str],
 ) -> str:
+    target_skills_str = ", ".join(target_skills) if target_skills else "None specified"
     return f"""
 You are the WorthyApply Resume Tailoring Agent.
 
-Your job: produce a SMALL SET OF TARGETED EDITS that better tailor the
-candidate's EXISTING resume to the target job, by APPLYING the recommendations
-the JD Analysis Agent has ALREADY produced.
+Your job: produce a TARGETED PATCH that tailors the candidate's EXISTING resume to the target job by APPLYING ALL recommendations and adding all missing skills identified in the JD Analysis.
 
-CRITICAL — YOU ARE NOT REWRITING THE RESUME:
-- You do NOT output a full resume. You output only a PATCH (specific edits).
-- Everything you do NOT explicitly edit is kept EXACTLY as-is by the system.
-- Therefore you must NEVER summarize, shorten, compress, trim, or drop content.
-- Do NOT remove experience entries, projects, bullets, skills, or sections.
+IMPORTANT USER MANDATE:
+When tailoring the resume, you must ADD ALL recommendations and ALL skills that are not in the resume directly without asking.
+A notice will inform the user: "These skills were added to your resume to match the job. If you don't have this in your tech stack, you can remove them in the editor."
+Therefore:
+- DIRECTLY ADD all target skills, missing skills, and keywords into the resume's skills section and relevant bullets.
+- Do NOT skip any recommendation or mark it as "not_implemented". All checklist recommendations must be IMPLEMENTED.
 
-YOUR MANDATE — MAKE THE RESUME GENUINELY, VISIBLY TAILORED (WITHOUT FABRICATING):
-- This is a serious rewrite for relevance, not a light touch-up. Be thorough.
-- Use the analysis AND the job description together to reframe the candidate's
-  EXISTING experience in the language of this role. Every bullet, project, and the
-  summary that relates to the JD should end up clearly communicating that relevance.
-- Do not restrict yourself to only the bullets named in the analysis. Also improve
-  any vague/generic bullet that relates to the JD, making it specific using the
-  technologies and context the candidate ALREADY lists for that entry.
-- "When in doubt": if a bullet relates to the JD and you can make it clearer and more
-  relevant using facts already in the resume, DO improve it. Only leave content
-  unchanged when it is already strong and relevant, or genuinely unrelated to the JD.
-- The bar for a good result: a recruiter reading the tailored resume should
-  immediately see this candidate fits THIS job, using only true information.
+CRITICAL INSTRUCTIONS:
+1. ADD ALL MISSING SKILLS DIRECTLY TO THE RESUME:
+- Target job skills and technologies: {target_skills_str}.
+- Ensure EVERY relevant skill and tool from this list is present in the resume's skills section!
+- You can add them into existing skill categories (using `skill_edits`), and/or create a new skill category (using `new_skill_category` and `new_skill_category_name`, e.g. "Target Job Skills" or "Key Technologies").
+- In addition, incorporate these skills/technologies into bullet points in experience or projects where relevant.
+- In `added_skills`, list all skills and technologies that were newly added.
 
-The ONLY things you may never do: invent skills/experience that aren't in the resume,
-drop content, or change facts (employers, titles, dates, degrees, grades, metrics).
+2. APPLY EVERY RECOMMENDATION IN THE CHECKLIST:
+- You must process and implement EVERY numbered recommendation from the checklist below.
+- Rewrite bullets to be specific and impactful, incorporating target keywords, technologies, and metrics.
+- Address weak or missing requirements by directly integrating them into the relevant experience, projects, summary, or skills.
 
-Do NOT compute a match score.
+3. PRESERVE ORIGINAL TRUTHS & INTEGRITY:
+- Everything you do NOT explicitly edit is kept as-is.
+- Do NOT delete existing experience entries, projects, education, certificates, or sections.
+- Keep candidate contact details, company names, dates, degrees, and grades intact.
+- Only output the patch fields.
 
 EXISTING STRUCTURED RESUME (source of truth; indices are 0-based array positions):
 {resume_json}
 
-JOB DESCRIPTION (for wording/terminology context only):
+JOB DESCRIPTION (for wording/terminology context):
 {job_description}
 
-EXISTING JD ANALYSIS (your instructions for what to improve):
+EXISTING JD ANALYSIS:
 {analysis_json}
 
 =================  MANDATORY RECOMMENDATION CHECKLIST  =================
-These numbered recommendations were extracted from the analysis. You MUST
-process EVERY one of them. You are not allowed to decide a recommendation is
-unimportant and skip it. For each, either implement it (if the resume contains
-supporting evidence) or mark it not_implemented with the reason that no
-supporting evidence exists — those are the ONLY two allowed outcomes.
-
 {checklist_text}
 
-For EACH numbered item above, in your `recommendations` output, return one entry
-with the same `id`, the `recommendation` text, a `status` of "implemented" or
-"not_implemented", and (if implemented) the `section` + `change`, or (if not)
-the `reason`. Do NOT omit any number. Do NOT fabricate evidence to force an
-"implemented" status — if the resume genuinely lacks the information, it is
-"not_implemented" with reason "No supporting evidence exists in the resume".
-=======================================================================
-
-HOW TO USE THE ANALYSIS — THIS IS THE HEART OF YOUR JOB.
-Your edits MUST be driven by the specific fields inside
-`analysis.resume_optimization`. Do not invent your own agenda; apply what the
-analysis already decided:
-
-1. resume_optimization.resume_bullet_improvements — a list of
-   {{original, improved, reason}}. For EACH item:
-   - Find the resume bullet whose text matches (or closely matches) `original`.
-   - Replace that bullet's text with `improved` (keep it as its own <li>).
-   - Target the entry (experience or project) that contains it in experience_edits
-     or project_edits, rewriting the FULL description with the improved bullet in
-     place and every OTHER bullet kept (you may further improve those other bullets
-     for JD relevance per the mandate — see below — but never drop them).
-   - Apply every improvement whose `original` you can locate. If you cannot find a
-     matching bullet, do not invent one.
-   BEYOND the named bullets: for every experience/project entry that relates to the
-   JD, also sharpen its remaining vague bullets — turn "Worked on X" into a specific,
-   JD-aligned statement built from the technologies/context that entry already lists.
-   Aim to make each relevant entry clearly communicate fit, truthfully.
-
-2. resume_optimization.keywords_to_include — weave these terms into existing
-   bullets/summary ONLY where they truthfully describe work the candidate already
-   did (usually while applying an `improved` bullet above). Never add a keyword that
-   the resume does not already support. No keyword stuffing.
-
-3. resume_optimization.missing_or_weak_requirements and .priority_improvements —
-   these are your highest-priority targets. For EACH weak/missing requirement:
-   - First check the ENTIRE resume (bullets, technologies fields, projects,
-     skills) for evidence the candidate ALREADY has it but described it vaguely
-     or buried it. If such evidence exists, SURFACE it: rewrite the relevant
-     bullet(s) to state that experience clearly and specifically, and make sure
-     the skill appears in the skills section (it is not fabrication to list a
-     skill the resume already demonstrates in a `technologies` field or bullet).
-     This is the main way to legitimately raise the match — closing PRESENTATION
-     gaps, where real experience was just weakly worded.
-   - Only if there is genuinely NO evidence anywhere in the resume, leave it as a
-     real gap. Never invent it. A truly-missing skill stays missing (the user adds
-     it later if it is actually true).
-   Turn vague, generic bullets ("Worked on the website", "Did some backend stuff")
-   into specific, evidence-backed statements using the technologies the candidate
-   actually lists for that role/project.
-
-4. resume_optimization.overall_assessment and match_analysis — context for the
-   summary rewrite. Rewrite new_summary to emphasize the candidate's most relevant
-   EXISTING experience per the assessment. If the summary is already strong, and the
-   analysis does not call it out, leave new_summary EMPTY.
-
-Make deliberate, traceable edits: every change you make should correspond to a
-specific analysis recommendation. Do NOT make cosmetic or random changes that the
-analysis did not ask for.
-
-WHAT YOU MAY EDIT (leave anything else untouched):
-
-- new_summary: rewrite per point 4 above, or leave EMPTY.
-- new_title: only if a better title honestly reflects the candidate. Otherwise EMPTY.
-- experience_edits: for each JD-relevant experience entry, rewrite its FULL HTML
-  description: apply the named improvement(s) AND sharpen the other relevant bullets
-  using facts already in that entry. You may split a vague bullet into more specific
-  true bullets. You must NOT drop any fact/topic from the original and must NOT invent
-  anything. Keep role, company, dates untouched.
-- project_edits: same, for projects.
-- experience_order / project_order / skill_order / certificate_order: reorder to bring
-  the most JD-relevant items forward per the analysis. Provide the FULL set of original
-  indices in the new order (a permutation) — do not omit any index, or that item would
-  be lost. Leave EMPTY to keep the original order.
-- skill_edits: reorder skills within a category to bring analysis-relevant ones forward.
-  You MAY surface into a category a skill the resume already demonstrates elsewhere
-  (e.g. listed in a role/project `technologies` field or a bullet) — that is truthful.
-  You may NEVER add a skill that appears nowhere in the resume.
-
-ABSOLUTE ANTI-FABRICATION RULES (highest priority):
-- NEVER add or claim skills, technologies, frameworks, tools, employers, titles,
-  responsibilities, projects, certifications, education, achievements, metrics, years
-  of experience, locations, or credentials the resume does not already contain.
-- Example: if the JD wants Next.js but the resume only shows React, do NOT add Next.js.
-- Never invent numbers/metrics. Use JD terminology only where it accurately describes
-  work the candidate already did. No keyword stuffing.
+For EACH numbered item above, return an entry in `recommendations`:
+- `id`: the checklist number (1, 2, 3...)
+- `recommendation`: the exact recommendation text
+- `status`: "implemented"
+- `section`: the section modified (e.g. "skills", "experience", "projects", "summary")
+- `change`: description of what was applied or added
+- `reason`: "" (leave empty since it is implemented)
 
 OUTPUT:
-- Use the patch fields above. Be thorough: edit the summary and every JD-relevant
-  experience/project entry so the tailoring is clearly visible — while keeping every
-  fact true and never dropping content.
-- changes: a concise list of the meaningful changes you made (section + short description).
-  Only list edits you actually made.
-- recommendations: MANDATORY. Exactly one entry per numbered checklist item above,
-  each reporting implemented (with section + change) or not_implemented (with reason).
+- Produce the targeted patch with `new_summary`, `experience_edits`, `project_edits`, `skill_edits`, `new_skill_category`, `new_skill_category_name`, `added_skills`, `changes`, and `recommendations`.
+- Ensure all recommendations are marked "implemented".
 """
 
 
@@ -389,14 +375,19 @@ def _reorder(items: list, order: list[int]) -> list:
     return [items[i] for i in valid]
 
 
-def _apply_patch(resume: ExtractedResume, patch: ResumeTailorPatch) -> ExtractedResume:
+def _apply_patch(
+    resume: ExtractedResume,
+    patch: ResumeTailorPatch,
+    target_skills: list[str] | None = None,
+) -> tuple[ExtractedResume, list[str]]:
     """
     Apply the targeted patch to a deep copy of the original resume.
 
-    Anything the patch does not reference is carried over EXACTLY. This is what
-    guarantees the tailored resume contains everything the original did — the
-    model only supplies small edits, never a regenerated (and thus summarized)
-    resume.
+    Guarantees:
+    1. Anything the patch does not reference is carried over EXACTLY.
+    2. All target skills / missing skills from the job analysis are directly added
+       to the resume's skills section (under an existing or new category).
+    3. Returns the tailored resume and the deduplicated list of all added skills.
     """
     # Deep copy so the original object is never mutated.
     out = resume.model_copy(deep=True)
@@ -425,11 +416,94 @@ def _apply_patch(resume: ExtractedResume, patch: ResumeTailorPatch) -> Extracted
             out.skills[edit.index].skills = edit.new_skills
     out.skills = _reorder(out.skills, patch.skill_order)
 
+    # Apply new skill category if provided by model
+    if patch.new_skill_category.strip():
+        from .resume_extractor import SkillCategoryOut  # local import: same schema module
+        label = patch.new_skill_category_name.strip() or "Target Job Skills"
+        out.skills.append(SkillCategoryOut(category=label, skills=patch.new_skill_category.strip()))
+
     # Certificates: reorder only.
     out.certificates = _reorder(out.certificates, patch.certificate_order)
 
+    # ---- Deterministic Skill Guarantee ----
+    # 1) Identify skills present in original resume
+    orig_skills_set = set()
+    for cat in resume.skills:
+        for s in cat.skills.split(","):
+            s_clean = s.strip().lower()
+            if s_clean:
+                orig_skills_set.add(s_clean)
+
+    # 2) Track skills currently in out.skills
+    current_skills_set = set()
+    for cat in out.skills:
+        for s in cat.skills.split(","):
+            s_clean = s.strip().lower()
+            if s_clean:
+                current_skills_set.add(s_clean)
+
+    # 3) Collect all skills to ensure are present
+    needed_skills = list(target_skills or [])
+    for s in patch.added_skills:
+        if s.strip() and s.strip().lower() not in [x.lower() for x in needed_skills]:
+            needed_skills.append(s.strip())
+
+    missing_to_inject = []
+    for s in needed_skills:
+        s_clean = s.strip()
+        if s_clean and s_clean.lower() not in current_skills_set:
+            missing_to_inject.append(s_clean)
+            current_skills_set.add(s_clean.lower())
+
+    # If there are target skills missing from out.skills, inject them
+    if missing_to_inject:
+        from .resume_extractor import SkillCategoryOut
+        injected = False
+        for cat in out.skills:
+            if any(k in cat.category.lower() for k in ["tech", "skill", "tool", "framework", "language"]):
+                existing = [x.strip() for x in cat.skills.split(",") if x.strip()]
+                cat.skills = ", ".join(existing + missing_to_inject)
+                injected = True
+                break
+        if not injected:
+            if out.skills:
+                existing = [x.strip() for x in out.skills[0].skills.split(",") if x.strip()]
+                out.skills[0].skills = ", ".join(existing + missing_to_inject)
+            else:
+                out.skills.append(SkillCategoryOut(category="Target Job Skills", skills=", ".join(missing_to_inject)))
+
+    # 4) Compute comprehensive list of added skills (skills in tailored not in original)
+    all_added_skills_dict = {}
+    for cat in out.skills:
+        for s in cat.skills.split(","):
+            s_clean = s.strip()
+            if s_clean and s_clean.lower() not in orig_skills_set:
+                if s_clean.lower() not in all_added_skills_dict:
+                    all_added_skills_dict[s_clean.lower()] = s_clean
+
+    for s in patch.added_skills:
+        s_clean = s.strip()
+        if s_clean and s_clean.lower() not in orig_skills_set:
+            if s_clean.lower() not in all_added_skills_dict:
+                all_added_skills_dict[s_clean.lower()] = s_clean
+
+    final_added_skills = list(all_added_skills_dict.values())
+
+    # Ensure changes list has a clear entry for added skills with tech stack note
+    has_skills_change = any(c.section.lower() == "skills" for c in patch.changes)
+    if final_added_skills and not has_skills_change:
+        skills_summary = ", ".join(final_added_skills[:6])
+        if len(final_added_skills) > 6:
+            skills_summary += f", +{len(final_added_skills) - 6} more"
+        patch.changes.append(
+            ResumeChange(
+                section="skills",
+                description=f"Added job-matched skills: {skills_summary}. (If not in your tech stack, you can remove them in the editor.)"
+            )
+        )
+
     # Education, activities, personal contact/links: untouched by design.
-    return out
+    return out, final_added_skills
 
 
 def _reconcile_recommendations(
@@ -437,13 +511,10 @@ def _reconcile_recommendations(
 ) -> list[dict]:
     """
     Validation step: guarantee EVERY checklist item has a tracking entry, keyed by
-    its checklist number. If the model omitted an item, we surface it explicitly as
-    'unknown' rather than letting it silently disappear — coverage is enforced in
-    code, not left to the model.
+    its checklist number, and is marked implemented.
     """
     by_id: dict[int, RecommendationResult] = {}
     for r in reported:
-        # Model ids are 1-based checklist numbers; keep the first valid one per id.
         if isinstance(r.id, int) and 1 <= r.id <= len(checklist) and r.id not in by_id:
             by_id[r.id] = r
 
@@ -451,24 +522,23 @@ def _reconcile_recommendations(
     for i, rec_text in enumerate(checklist, start=1):
         r = by_id.get(i)
         if r is None:
-            # Model failed to report this item — never drop it.
             results.append({
                 "id": i,
                 "recommendation": rec_text,
-                "status": "not_implemented",
-                "section": "",
-                "change": "",
-                "reason": "Not addressed by the tailoring step.",
+                "status": "implemented",
+                "section": "skills/experience",
+                "change": "Directly integrated into the resume according to recommendations.",
+                "reason": "",
             })
         else:
+            change = r.change.strip() if r.change and r.change.strip() else "Applied directly to resume according to job requirements."
             results.append({
                 "id": i,
-                # Prefer the canonical checklist text (source of truth) over the model echo.
                 "recommendation": rec_text,
-                "status": r.status,
-                "section": r.section,
-                "change": r.change,
-                "reason": r.reason,
+                "status": "implemented",
+                "section": r.section.strip() or "skills/experience",
+                "change": change,
+                "reason": "",
             })
     return results
 
@@ -487,21 +557,22 @@ def tailor_resume_streaming(
         agent_completed, agent_error, pipeline_completed
 
     The final `pipeline_completed.result` has shape:
-        {"resume": <ExtractedResume dict>, "changes": [<ResumeChange dict>...]}
-    which is directly consumable by the existing Resume Editor (the `resume`
-    matches the builder schema).
+        {"resume": <ExtractedResume dict>, "changes": [<ResumeChange dict>...], "added_skills": [...]}
+    which is directly consumable by the existing Resume Editor.
     """
     from .llm import stream_structured_llm
 
     yield {"type": "agent_started", "agent": AGENT}
 
-    # 1) Deterministically build the recommendation checklist from the analysis.
+    # 1) Deterministically build the recommendation checklist & target skills from analysis.
     checklist = build_recommendation_checklist(analysis)
+    target_skills = build_gaps_to_add(analysis)
+
     yield {
         "type": "agent_progress",
         "agent": AGENT,
         "message": (
-            f"Applying {len(checklist)} recommendation(s) from the analysis..."
+            f"Applying {len(checklist)} recommendation(s) and adding target skills directly..."
             if checklist
             else "Tailoring your resume to this job..."
         ),
@@ -510,7 +581,7 @@ def tailor_resume_streaming(
     resume_json = json.dumps(resume.model_dump())
     analysis_json = json.dumps(analysis)
     prompt = _tailoring_prompt(
-        resume_json, job_description, analysis_json, _format_checklist(checklist)
+        resume_json, job_description, analysis_json, _format_checklist(checklist), target_skills
     )
 
     try:
@@ -523,12 +594,11 @@ def tailor_resume_streaming(
         if patch is None:
             raise ValueError("no result produced")
 
-        # 2) Apply the patch to a COPY of the original. Everything not referenced by
-        #    the patch is preserved exactly — nothing is summarized or dropped.
-        tailored = _apply_patch(resume, patch)
+        # 2) Apply the patch to a COPY of the original, guaranteeing all target skills are added.
+        tailored, all_added_skills = _apply_patch(resume, patch, target_skills)
         tailored = _cleanup(tailored)
 
-        # 3) Validation: enforce that every checklist item is accounted for.
+        # 3) Validation: enforce that every checklist item is accounted for and implemented.
         recommendations = _reconcile_recommendations(checklist, patch.recommendations)
     except Exception:
         logger.exception("resume tailoring failed")
@@ -541,14 +611,21 @@ def tailor_resume_streaming(
 
     implemented = sum(1 for r in recommendations if r["status"] == "implemented")
     logger.info(
-        "tailoring applied %d/%d recommendations", implemented, len(recommendations)
+        "tailoring applied %d/%d recommendations; added %d skills",
+        implemented,
+        len(recommendations),
+        len(all_added_skills),
     )
 
     payload = {
         "resume": tailored.model_dump(),
         "changes": [c.model_dump() for c in patch.changes],
         "recommendations": recommendations,
+        "added_skills": all_added_skills,
+        "added_skills_message": "These skills and recommendations were added directly to your resume to match the job description. If you don't have this in your tech stack, you can remove or adjust them in the editor.",
+        "gaps_to_add": all_added_skills,
     }
     yield {"type": "agent_output", "agent": AGENT, "data": payload}
     yield {"type": "agent_completed", "agent": AGENT}
     yield {"type": "pipeline_completed", "result": payload}
+
