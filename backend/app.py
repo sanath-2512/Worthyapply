@@ -37,7 +37,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # The API is stateless — no cookies, sessions, or auth headers are used, and
+    # the frontend never sends credentials. Pairing a wildcard origin with
+    # allow_credentials=True would make Starlette echo back any requesting
+    # origin and permit credentialed cross-site calls; keeping it False makes
+    # the wildcard mean what it says without changing any current behavior.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

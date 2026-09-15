@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import { sanitizeRichText } from "@/lib/sanitize-html";
 import { Icon } from "../ui/Icon";
 
 interface Props {
@@ -19,10 +20,12 @@ export function RichTextEditor({ value, onChange, placeholder, minRows = 3 }: Pr
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<Record<string, boolean>>({});
 
-  // Sync external value into the editor (only when it differs, to avoid caret jumps)
+  // Sync external value into the editor (only when it differs, to avoid caret
+  // jumps). Sanitized because imported/tailored resumes carry model-generated
+  // HTML, and assigning it raw would run inline handlers.
   useEffect(() => {
     if (ref.current && ref.current.innerHTML !== value) {
-      ref.current.innerHTML = value || "";
+      ref.current.innerHTML = sanitizeRichText(value);
     }
   }, [value]);
 

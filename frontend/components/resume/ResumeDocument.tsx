@@ -1,6 +1,7 @@
 "use client";
 
 import { ResumeData, normalizeUrl, hasText } from "@/lib/resume-types";
+import { sanitizeRichText } from "@/lib/sanitize-html";
 import "./resume-document.css";
 
 interface Props {
@@ -72,7 +73,7 @@ export function ResumeDocument({ data }: Props) {
       {hasText(summary) && (
         <section className="rd-section">
           <h2 className="rd-section-title">Professional Summary</h2>
-          <div className="rd-rich rd-summary" dangerouslySetInnerHTML={{ __html: summary }} />
+          <div className="rd-rich rd-summary" dangerouslySetInnerHTML={{ __html: sanitizeRichText(summary) }} />
         </section>
       )}
 
@@ -118,7 +119,7 @@ export function ResumeDocument({ data }: Props) {
                 {exp.location && <span className="rd-entry-meta rd-italic">{exp.location}</span>}
               </div>
               {hasText(exp.description) && (
-                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: exp.description }} />
+                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: sanitizeRichText(exp.description) }} />
               )}
               {exp.technologies && (
                 <div className="rd-tech">
@@ -158,7 +159,7 @@ export function ResumeDocument({ data }: Props) {
                 </span>
               </div>
               {hasText(proj.description) && (
-                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: proj.description }} />
+                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: sanitizeRichText(proj.description) }} />
               )}
               {proj.technologies && (
                 <div className="rd-tech">
@@ -197,7 +198,7 @@ export function ResumeDocument({ data }: Props) {
                 </div>
               )}
               {hasText(c.description) && (
-                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: c.description }} />
+                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: sanitizeRichText(c.description) }} />
               )}
             </div>
           ))}
@@ -227,7 +228,7 @@ export function ResumeDocument({ data }: Props) {
                 {a.organizations && <span> | {a.organizations}</span>}
               </div>
               {hasText(a.description) && (
-                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: a.description }} />
+                <div className="rd-rich" dangerouslySetInnerHTML={{ __html: sanitizeRichText(a.description) }} />
               )}
             </div>
           ))}
