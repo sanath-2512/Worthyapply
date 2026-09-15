@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnalysisResponse } from "@/lib/types";
-import { analyzeApplicationStream, ApiError, PipelineEvent } from "@/lib/api";
+import { analyzeApplicationStream, ApiError, AgentId, PipelineEvent } from "@/lib/api";
 import { Landing } from "@/components/Landing";
 import { Workspace } from "@/components/Workspace";
 import { Processing, INITIAL_AGENTS, AgentUiState } from "@/components/Processing";
@@ -24,6 +24,11 @@ function viewFromHash(hash: string): View {
 // close). The typed JD draft is persisted separately by the Workspace component.
 const SESSION_KEY = "worthyapply_session_v1";
 const JD_DRAFT_KEY = "worthyapply_jd_draft_v1";
+
+// The backend runs all three analysis phases in ONE call and reports them under
+// the single `analyzer` agent, emitting a per-section `agent_output` as each
+// phase is parsed. These are the UI steps that one agent drives.
+const ANALYSIS_AGENTS: AgentId[] = ["job_analyzer", "matcher", "resume_optimizer"];
 
 interface PersistedSession {
   results: AnalysisResponse | null;
@@ -69,6 +74,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [agents, setAgents] = useState<AgentUiState[]>(INITIAL_AGENTS);
   const [liveText, setLiveText] = useState<LiveText>({});
+  // Shared status line for the single combined-analysis call.
+  const [analysisMessage, setAnalysisMessage] = useState("");
   // Retain the inputs so the Resume Tailoring Agent can reuse them without
   // asking the user to upload the resume or paste the JD again.
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -95,9 +102,12 @@ export default function Home() {
 
   // Mount-only (client): restore persisted session + reload-adjusted view, set the
   // base history entry, and restore the view on browser Back/Forward.
+  // localStorage and location cannot be read during render without breaking
+  // hydration, so the post-mount writes here are deliberate.
   useEffect(() => {
     const restored = loadSession();
     if (restored?.results) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults(restored.results);
       if (restored.jobDescription) setJobDescription(restored.jobDescription);
     }
@@ -130,7 +140,6 @@ export default function Home() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -142,18 +151,38 @@ export default function Home() {
   const resetAgents = () => {
     setAgents(INITIAL_AGENTS.map((a) => ({ ...a, status: "pending", message: undefined })));
     setLiveText({});
+    setAnalysisMessage("");
   };
 
   const updateAgent = (id: string, patch: Partial<AgentUiState>) =>
     setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
 
+  // Apply a patch to every step driven by the combined `analyzer` agent.
+  const updateAnalysisAgents = (
+    patch: Partial<AgentUiState>,
+    only?: (a: AgentUiState) => boolean
+  ) =>
+    setAgents((prev) =>
+      prev.map((a) =>
+        ANALYSIS_AGENTS.includes(a.id) && (!only || only(a)) ? { ...a, ...patch } : a
+      )
+    );
+
   const handleEvent = (event: PipelineEvent) => {
     switch (event.type) {
       case "agent_started":
-        updateAgent(event.agent, { status: "running", message: undefined });
+        if (event.agent === "analyzer") updateAnalysisAgents({ status: "running", message: undefined });
+        else updateAgent(event.agent, { status: "running", message: undefined });
         break;
       case "agent_progress":
-        updateAgent(event.agent, { status: "running", message: event.message });
+        // The analyzer's rotating phase text describes the one in-flight call;
+        // show it once for the group rather than repeating it per step.
+        if (event.agent === "analyzer") setAnalysisMessage(event.message);
+        else updateAgent(event.agent, { status: "running", message: event.message });
+        break;
+      case "agent_output":
+        // A section finished parsing — this is real per-phase completion.
+        updateAgent(event.agent, { status: "completed", message: undefined });
         break;
       case "agent_token":
         setLiveText((prev) => ({
@@ -167,12 +196,25 @@ export default function Home() {
         setLiveText((prev) => ({ ...prev, [event.agent]: "" }));
         break;
       case "agent_completed":
-        updateAgent(event.agent, { status: "completed", message: undefined });
+        if (event.agent === "analyzer") {
+          setAnalysisMessage("");
+          updateAnalysisAgents({ status: "completed", message: undefined });
+        } else {
+          updateAgent(event.agent, { status: "completed", message: undefined });
+        }
         break;
       case "agent_error":
-        updateAgent(event.agent, { status: "error", message: event.message });
+        if (event.agent === "analyzer") {
+          setAnalysisMessage("");
+          updateAnalysisAgents(
+            { status: "error", message: event.message },
+            (a) => a.status !== "completed"
+          );
+        } else {
+          updateAgent(event.agent, { status: "error", message: event.message });
+        }
         break;
-      // stream_started, agent_output, pipeline_completed need no UI-state change here.
+      // stream_started and pipeline_completed need no UI-state change here.
       default:
         break;
     }
@@ -211,6 +253,13 @@ export default function Home() {
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
+  };
+
+  // Abandon an in-flight analysis and return to the inputs (which are retained).
+  const handleCancelAnalysis = () => {
+    abortRef.current?.abort();
+    resetAgents();
+    navigate("workspace", { replace: true });
   };
 
   // Results "New" — explicit fresh start (distinct from Back).
@@ -266,7 +315,12 @@ export default function Home() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Processing agents={agents} liveText={liveText} />
+          <Processing
+            agents={agents}
+            liveText={liveText}
+            analysisMessage={analysisMessage}
+            onCancel={handleCancelAnalysis}
+          />
         </motion.div>
       )}
 

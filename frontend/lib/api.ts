@@ -7,6 +7,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export type AgentId =
   | "resume_analyzer"
+  /** The single combined-analysis agent; its three phases surface as the ids below. */
+  | "analyzer"
   | "job_analyzer"
   | "matcher"
   | "resume_optimizer"
