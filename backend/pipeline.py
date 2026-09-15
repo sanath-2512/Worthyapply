@@ -1,30 +1,23 @@
 """
-Integration layer for the AI Job Application Copilot.
+Analysis pipeline for the AI Job Application Copilot.
 
-This module provides a web-callable interface to the same three-agent
-pipeline defined in main.py. It uses the exact same:
-- Pydantic schemas (JobAnalysis, MatchAnalysis, BulletImprovement, ResumeOptimization)
-- Groq model (groq:openai/gpt-oss-120b)
-- Agent prompts
-- PDF extraction logic
+This module owns the schemas, prompts, and scoring used by the web API. It grew
+out of the three-agent CLI prototype in the repository root (main.py) and still
+shares its schema names and prompt structure, but it is now the authoritative
+implementation and has moved beyond it:
 
-main.py remains the source of truth and is NOT modified.
-This wrapper exists solely to make the pipeline callable from FastAPI
-without the CLI input() calls.
+- run_full_pipeline runs all three reasoning phases in ONE structured call
+  (run_full_pipeline_legacy keeps the original 3-call path for benchmarking),
+- the match score and recommendation are computed deterministically in Python
+  from per-requirement assessments rather than taken from the model,
+- requests go through the multi-provider router in backend/llm_router/.
+
+main.py is a standalone CLI prototype and is not imported from here.
 """
 
-import sys
-import os
-import ast
-import types
 import io
 
-# Ensure the project root is importable
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 from typing import Literal
-from langchain.agents import create_agent
-from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 

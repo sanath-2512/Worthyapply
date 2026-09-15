@@ -1,10 +1,49 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const TITLE = "WorthyApply — Make every application worth submitting";
+const DESCRIPTION =
+  "Check your resume against any job description, see an explainable match score with the evidence behind it, then tailor your resume to the role — using only what you have actually done.";
+
 export const metadata: Metadata = {
-  title: "WorthyApply — Make every application worth submitting",
-  description:
-    "Understand the role. Know your fit. Strengthen your application.",
+  title: {
+    default: TITLE,
+    template: "%s · WorthyApply",
+  },
+  description: DESCRIPTION,
+  applicationName: "WorthyApply",
+  keywords: [
+    "resume analysis",
+    "job description matching",
+    "resume tailoring",
+    "ATS keywords",
+    "resume builder",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "WorthyApply",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#050507" },
+  ],
 };
 
 // Runs before first paint to set the theme on <html>, preventing a
@@ -24,11 +63,16 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased noise">{children}</body>
+      <body className="antialiased noise">
+        <a href="#main" className="skip-link">
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

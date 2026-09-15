@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ResumeData } from "@/lib/resume-types";
+import { useMounted } from "@/lib/use-mounted";
 import { ResumeDocument } from "./ResumeDocument";
 import { Icon } from "../ui/Icon";
 
@@ -19,9 +20,10 @@ export function ResumePreview({ data }: Props) {
   const [scale, setScale] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [overflow, setOverflow] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // Measured document height, so the scaled wrapper reserves the right space
+  // instead of reading a ref during render (which renders one frame too short).
+  const [docHeight, setDocHeight] = useState(A4_HEIGHT_PX);
+  const mounted = useMounted();
 
   const handleDownload = () => {
     // Native print → "Save as PDF". Produces a small (~50KB) text-based PDF
@@ -41,13 +43,18 @@ export function ResumePreview({ data }: Props) {
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  // Overflow detection
+  // Measure the rendered document: drives both the one-page warning and the
+  // height the scaled wrapper reserves.
   useEffect(() => {
     const el = docRef.current;
     if (!el) return;
-    const check = () => setOverflow(el.scrollHeight > A4_HEIGHT_PX + 4);
-    check();
-    const ro = new ResizeObserver(check);
+    const measure = () => {
+      const height = el.scrollHeight;
+      setOverflow(height > A4_HEIGHT_PX + 4);
+      setDocHeight(Math.max(height, A4_HEIGHT_PX));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, [data]);
@@ -77,11 +84,13 @@ export function ResumePreview({ data }: Props) {
           </div>
 
           <button
+            type="button"
             onClick={handleDownload}
             disabled={!data.personal.fullName}
-            className="magnetic-btn text-sm font-semibold px-5 py-2 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 4px 16px rgba(108,99,255,0.2)" }}
+            className="btn btn-primary btn-sm magnetic-btn"
+            title={data.personal.fullName ? undefined : "Add your name to enable export"}
           >
+            <Icon name="download" size={15} />
             Download PDF
           </button>
         </div>
@@ -91,12 +100,12 @@ export function ResumePreview({ data }: Props) {
       <div
         ref={containerRef}
         className="flex-1 overflow-auto rounded-xl p-6 flex justify-center"
-        style={{ background: "#3a3a42" }}
+        style={{ background: "var(--viewer-bg)" }}
       >
         <div
           style={{
             width: A4_WIDTH_PX * effectiveScale,
-            height: docRef.current ? docRef.current.scrollHeight * effectiveScale : A4_HEIGHT_PX * effectiveScale,
+            height: docHeight * effectiveScale,
           }}
         >
           <div
@@ -105,7 +114,7 @@ export function ResumePreview({ data }: Props) {
               transform: `scale(${effectiveScale})`,
               transformOrigin: "top left",
               width: A4_WIDTH_PX,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+              boxShadow: "var(--viewer-shadow)",
             }}
           >
             <ResumeDocument data={data} />

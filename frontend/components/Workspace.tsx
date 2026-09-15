@@ -24,10 +24,12 @@ export function Workspace({ onAnalyze, error, onClearError, onBack }: Props) {
   const [fileError, setFileError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Restore any saved JD draft after mount (client-only, avoids SSR mismatch).
+  // Restore any saved JD draft after mount. localStorage cannot be read during
+  // render without breaking hydration, so the post-mount write is deliberate.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(JD_DRAFT_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setJd(saved);
     } catch {}
   }, []);
@@ -92,7 +94,7 @@ export function Workspace({ onAnalyze, error, onClearError, onBack }: Props) {
         </div>
       </header>
 
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <main id="main" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-10">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2" style={{ color: "var(--text)" }}>
@@ -109,7 +111,7 @@ export function Workspace({ onAnalyze, error, onClearError, onBack }: Props) {
               <motion.div
                 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                 className="mb-6 p-4 rounded-xl border"
-                style={{ background: "var(--red-dim)", borderColor: "rgba(255,0,102,0.2)" }}
+                style={{ background: "var(--red-dim)", borderColor: "var(--red-glow)" }}
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm" style={{ color: "var(--red)" }}>{error}</p>
@@ -195,10 +197,19 @@ export function Workspace({ onAnalyze, error, onClearError, onBack }: Props) {
                 Analyze Application
                 <Icon name="arrow-right" size={18} />
               </button>
+              {!canSubmit && (
+                <p className="mt-2.5 text-[11px] text-center" style={{ color: "var(--text-muted)" }}>
+                  {!file && !jd.trim()
+                    ? "Add your resume and a job description to continue."
+                    : !file
+                    ? "Add your resume to continue."
+                    : "Paste the job description to continue."}
+                </p>
+              )}
             </motion.div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

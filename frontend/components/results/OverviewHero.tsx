@@ -32,18 +32,21 @@ export function OverviewHero({
   const [animScore, setAnimScore] = useState(0);
 
   useEffect(() => {
+    // Under reduced-motion the first frame lands on the final value, so the
+    // count-up is skipped without a separate synchronous state write.
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) { setAnimScore(score); return; }
+    const duration = reduced ? 0 : 1400;
 
-    const duration = 1400;
+    let frame = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const p = Math.min((now - start) / duration, 1);
+      const p = duration === 0 ? 1 : Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - p, 4);
       setAnimScore(Math.round(eased * score));
-      if (p < 1) requestAnimationFrame(tick);
+      if (p < 1) frame = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [score]);
 
   const color = score >= 70 ? "var(--green)" : score >= 45 ? "var(--amber)" : "var(--red)";
@@ -73,7 +76,10 @@ export function OverviewHero({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.6, type: "spring", stiffness: 120 }}
         >
+          {/* Announce the final score once, not every count-up frame. */}
+          <span className="sr-only">Match score: {score} out of 100</span>
           <span
+            aria-hidden="true"
             className="text-[8rem] md:text-[10rem] lg:text-[12rem] font-black leading-none tabular-nums block"
             style={{ color, fontFamily: "'Inter', sans-serif" }}
           >

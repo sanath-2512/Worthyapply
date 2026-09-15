@@ -20,22 +20,31 @@
   --border-subtle: #151520;
   --text: #f0f0f2;
   --text-secondary: #8a8a9a;
-  --text-muted: #4e4e5e;
+  /* Muted text carries real body copy, so it must clear WCAG AA (4.5:1) on --bg. */
+  --text-muted: #7b7b8d;
   --accent: #6c63ff;
   --accent-bright: #8b83ff;
   --accent-dim: rgba(108, 99, 255, 0.10);
   --accent-glow: rgba(108, 99, 255, 0.15);
   --green: #3dd68c;
   --green-dim: rgba(61, 214, 140, 0.10);
+  --green-glow: rgba(61, 214, 140, 0.25);
   --amber: #f5a623;
   --amber-dim: rgba(245, 166, 35, 0.10);
   --red: #f06;
   --red-dim: rgba(255, 0, 102, 0.10);
+  --red-glow: rgba(255, 0, 102, 0.22);
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-elevated: 0 20px 50px -24px rgba(0, 0, 0, 0.6);
   --shadow-accent: 0 8px 30px rgba(108, 99, 255, 0.28);
   --noise-opacity: 0.025;
+
+  /* Translucent backdrop for sticky headers (must match --bg per theme). */
+  --nav-bg: rgba(5, 5, 7, 0.92);
+  /* Neutral backdrop behind the white A4 page in document previews. */
+  --viewer-bg: #18181d;
+  --viewer-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -50,22 +59,29 @@
   --border-subtle: #ececf2;
   --text: #14141a;
   --text-secondary: #55556a;
-  --text-muted: #8a8a9c;
+  /* Muted text carries real body copy, so it must clear WCAG AA (4.5:1) on --bg. */
+  --text-muted: #6d6d80;
   --accent: #5b52f0;
   --accent-bright: #4a41d8;
   --accent-dim: rgba(91, 82, 240, 0.08);
   --accent-glow: rgba(91, 82, 240, 0.14);
   --green: #129d63;
   --green-dim: rgba(18, 157, 99, 0.10);
+  --green-glow: rgba(18, 157, 99, 0.28);
   --amber: #b8730a;
   --amber-dim: rgba(184, 115, 10, 0.10);
   --red: #d81b60;
   --red-dim: rgba(216, 27, 96, 0.10);
+  --red-glow: rgba(216, 27, 96, 0.25);
 
   --shadow-card: 0 1px 2px rgba(20, 20, 40, 0.06);
   --shadow-elevated: 0 20px 50px -24px rgba(20, 20, 40, 0.18);
   --shadow-accent: 0 8px 30px rgba(91, 82, 240, 0.20);
   --noise-opacity: 0.015;
+
+  --nav-bg: rgba(247, 247, 251, 0.92);
+  --viewer-bg: #c9c9d3;
+  --viewer-shadow: 0 10px 40px rgba(20, 20, 40, 0.22);
   color-scheme: light;
 }
 
@@ -89,10 +105,8 @@
   --radius-xl: 24px;
   --radius-full: 999px;
 
-  /* Elevation (used sparingly) */
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-elevated: 0 20px 50px -24px rgba(0, 0, 0, 0.6);
-  --shadow-accent: 0 8px 30px rgba(108, 99, 255, 0.28);
+  /* Elevation tokens are theme-scoped above — do not redefine them here, or the
+     light theme silently inherits the dark shadows. */
 
   /* Motion */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -152,6 +166,30 @@ body {
   opacity: var(--noise-opacity, 0.025);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   z-index: 9999;
+}
+
+/* The grain overlay is decoration; never let it reach a printed page. */
+@media print {
+  .noise::after { display: none !important; }
+}
+
+/* Skip link — visible only once focused via keyboard. */
+.skip-link {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 10000;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transform: translateY(-200%);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 /* Magnetic button base */

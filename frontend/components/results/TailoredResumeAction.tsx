@@ -13,6 +13,7 @@ import {
   RecommendationResult,
 } from "@/lib/api";
 import { ResumeData, mergeExtracted, saveTailoredResume } from "@/lib/resume-types";
+import { useMounted } from "@/lib/use-mounted";
 import { ResumeDocument } from "@/components/resume/ResumeDocument";
 import { Icon } from "@/components/ui/Icon";
 
@@ -35,21 +36,18 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
   const [statusMsg, setStatusMsg] = useState("Tailoring your resume to this job...");
   const [changes, setChanges] = useState<ResumeChange[]>([]);
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
-  const [gapsToAdd, setGapsToAdd] = useState<string[]>([]);
   const [addedSkills, setAddedSkills] = useState<string[]>([]);
   const [tailoredResume, setTailoredResume] = useState<ResumeData | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>("preview");
   const [error, setError] = useState("");
-  const [mounted, setMounted] = useState(false);
   const [previewScale, setPreviewScale] = useState(0.85);
   const [zoom, setZoom] = useState(1);
+  // Measured document height, so the scaled wrapper reserves the right space.
+  const [docHeight, setDocHeight] = useState(A4_HEIGHT_PX);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const previewDocRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   // Compute preview scaling to fit container width
   useEffect(() => {
@@ -63,6 +61,18 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
     window.addEventListener("resize", computeScale);
     return () => window.removeEventListener("resize", computeScale);
   }, [phase, viewTab]);
+
+  // Measure the rendered document once it is on screen.
+  useEffect(() => {
+    if (phase !== "done" || viewTab !== "preview") return;
+    const el = previewDocRef.current;
+    if (!el) return;
+    const measure = () => setDocHeight(Math.max(el.scrollHeight, A4_HEIGHT_PX));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [phase, viewTab, tailoredResume]);
 
   const canRun = Boolean(resumeFile) && jobDescription.trim().length > 0;
 
@@ -78,7 +88,6 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
     setLiveText("");
     setChanges([]);
     setRecommendations([]);
-    setGapsToAdd([]);
     setAddedSkills([]);
     setTailoredResume(null);
     setStatusMsg("Tailoring your resume to this job...");
@@ -108,7 +117,6 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
       setChanges(result.changes || []);
       setRecommendations(result.recommendations || []);
       setAddedSkills(newAddedSkills);
-      setGapsToAdd(newAddedSkills);
       setPhase("done");
       setViewTab("preview");
     } catch (err) {
@@ -201,8 +209,8 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
             <div
               className="rounded-2xl p-5 md:p-6 border"
               style={{
-                background: "linear-gradient(135deg, rgba(0,200,120,0.08) 0%, rgba(108,99,255,0.06) 100%)",
-                borderColor: "rgba(0,200,120,0.25)",
+                background: "linear-gradient(135deg, var(--green-dim) 0%, var(--accent-dim) 100%)",
+                borderColor: "var(--green-glow)",
               }}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -253,8 +261,8 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
             <div
               className="rounded-2xl p-5 md:p-6 border"
               style={{
-                background: "linear-gradient(135deg, rgba(108,99,255,0.08) 0%, rgba(0,200,120,0.07) 100%)",
-                borderColor: "rgba(108,99,255,0.28)",
+                background: "linear-gradient(135deg, var(--accent-dim) 0%, var(--green-dim) 100%)",
+                borderColor: "var(--accent-glow)",
               }}
             >
               <div className="flex items-start gap-3.5">
@@ -368,7 +376,7 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
                 ref={previewContainerRef}
                 className="w-full rounded-2xl overflow-auto p-4 md:p-8 flex justify-center border"
                 style={{
-                  background: "#18181d",
+                  background: "var(--viewer-bg)",
                   borderColor: "var(--border-subtle)",
                   maxHeight: "700px",
                 }}
@@ -376,7 +384,7 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
                 <div
                   style={{
                     width: A4_WIDTH_PX * effectiveScale,
-                    height: previewDocRef.current ? previewDocRef.current.scrollHeight * effectiveScale : A4_HEIGHT_PX * effectiveScale,
+                    height: docHeight * effectiveScale,
                   }}
                 >
                   <div
@@ -385,7 +393,7 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
                       transform: `scale(${effectiveScale})`,
                       transformOrigin: "top left",
                       width: A4_WIDTH_PX,
-                      boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+                      boxShadow: "var(--viewer-shadow)",
                     }}
                   >
                     <ResumeDocument data={tailoredResume} />
@@ -406,7 +414,7 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
                         className="p-3.5 rounded-xl border flex items-start gap-3 text-xs"
                         style={{
                           background: done ? "var(--surface)" : "var(--bg-elevated)",
-                          borderColor: done ? "rgba(0,200,120,0.15)" : "var(--border-subtle)",
+                          borderColor: done ? "var(--green-glow)" : "var(--border-subtle)",
                         }}
                       >
                         <span
@@ -445,7 +453,7 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
                       className="p-3.5 rounded-xl border flex items-start gap-3 text-xs"
                       style={{
                         background: "var(--surface)",
-                        borderColor: "rgba(0,200,120,0.15)",
+                        borderColor: "var(--green-glow)",
                       }}
                     >
                       <span
@@ -476,7 +484,7 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
           <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-5">
             <div
               className="rounded-xl p-4 mb-4 text-[12px]"
-              style={{ background: "var(--red-dim)", border: "1px solid rgba(255,0,102,0.2)", color: "var(--red)" }}
+              style={{ background: "var(--red-dim)", border: "1px solid var(--red-glow)", color: "var(--red)" }}
             >
               {error} Your original resume was not changed.
             </div>

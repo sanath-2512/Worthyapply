@@ -42,19 +42,27 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
         {/* Priorities */}
         <div>
           <Label>Priority Actions</Label>
-          <div className="space-y-3">
-            {priorities.map((p, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span
-                  className="shrink-0 w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded-full"
-                  style={{ background: "var(--accent-dim)", color: "var(--accent-bright)", fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  {i + 1}
-                </span>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{p}</p>
-              </div>
-            ))}
-          </div>
+          {priorities.length > 0 ? (
+            <div className="space-y-3">
+              {priorities.map((p, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span
+                    className="shrink-0 w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded-full"
+                    style={{ background: "var(--accent-dim)", color: "var(--accent-bright)", fontFamily: "'JetBrains Mono', monospace" }}
+                  >
+                    {i + 1}
+                  </span>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{p}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyNote>
+              No priority rewrites were flagged for this role — your resume already
+              speaks to what the job asks for. Review the sections below for smaller
+              wording gains.
+            </EmptyNote>
+          )}
         </div>
 
         {/* Bullet Improvements */}
@@ -81,17 +89,25 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
         {/* Keywords */}
         <div>
           <Label>Keywords to Include</Label>
-          <div className="flex flex-wrap gap-2">
-            {keywords.map((k) => (
-              <span
-                key={k}
-                className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg"
-                style={{ background: "var(--green-dim)", color: "var(--green)" }}
-              >
-                <Icon name="check" size={12} /> {k}
-              </span>
-            ))}
-          </div>
+          {keywords.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {keywords.map((k) => (
+                <span
+                  key={k}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg"
+                  style={{ background: "var(--green-dim)", color: "var(--green)" }}
+                >
+                  <Icon name="check" size={12} /> {k}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <EmptyNote>
+              Nothing to add here. WorthyApply only suggests keywords your resume
+              genuinely supports, and the terms this job uses are already covered —
+              or they belong to gaps you should not claim.
+            </EmptyNote>
+          )}
         </div>
 
         {/* Action prompt */}
@@ -99,8 +115,8 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
           <div
             className="p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4"
             style={{
-              background: "linear-gradient(135deg, rgba(108,99,255,0.08) 0%, rgba(5,5,7,0.4) 100%)",
-              borderColor: "rgba(108,99,255,0.25)",
+              background: "linear-gradient(135deg, var(--accent-dim) 0%, var(--surface) 100%)",
+              borderColor: "var(--accent-glow)",
             }}
           >
             <div>
@@ -170,5 +186,16 @@ function Label({ children }: { children: React.ReactNode }) {
     <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: "var(--text-muted)" }}>
       {children}
     </h3>
+  );
+}
+
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="text-[13px] leading-relaxed rounded-xl border border-dashed px-4 py-3.5"
+      style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+    >
+      {children}
+    </p>
   );
 }

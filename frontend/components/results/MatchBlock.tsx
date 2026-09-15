@@ -6,10 +6,11 @@ interface Props {
   required: string[];
   matching: string[];
   gaps: string[];
-  score: number;
 }
 
-export function MatchBlock({ required, matching, gaps, score }: Props) {
+export function MatchBlock({ required, matching, gaps }: Props) {
+  // Skill coverage, which is deliberately distinct from the weighted match
+  // score in the hero: this counts requirements, that one weights them.
   const pct = Math.round((matching.length / Math.max(required.length, 1)) * 100);
   const barColor = pct >= 70 ? "var(--green)" : "var(--amber)";
 
@@ -51,17 +52,28 @@ export function MatchBlock({ required, matching, gaps, score }: Props) {
           >
             <Icon name="check" size={13} /> You have ({matching.length})
           </h3>
-          <div className="space-y-1.5">
-            {matching.map((s) => (
-              <div
-                key={s}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
-                style={{ background: "var(--green-dim)", color: "var(--green)" }}
-              >
-                <Icon name="check" size={13} /> {s}
-              </div>
-            ))}
-          </div>
+          {matching.length > 0 ? (
+            <div className="space-y-1.5">
+              {matching.map((s) => (
+                <div
+                  key={s}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: "var(--green-dim)", color: "var(--green)" }}
+                >
+                  <Icon name="check" size={13} /> {s}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p
+              className="text-[13px] leading-relaxed rounded-xl border border-dashed px-4 py-3.5"
+              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            >
+              None of the required skills are clearly evidenced in your resume yet.
+              If you do have them, make them explicit in your experience or projects —
+              a skills list alone counts for little.
+            </p>
+          )}
         </div>
 
         <div>

@@ -63,7 +63,7 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
       {/* Sticky nav */}
       <nav
         className="sticky top-0 z-50 border-b backdrop-blur-2xl"
-        style={{ background: "rgba(5,5,7,0.92)", borderColor: "var(--border-subtle)" }}
+        style={{ background: "var(--nav-bg)", borderColor: "var(--border-subtle)" }}
       >
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
@@ -112,7 +112,7 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
               style={{
                 background: "var(--accent)",
                 color: "#fff",
-                boxShadow: "0 2px 14px rgba(108,99,255,0.35)",
+                boxShadow: "var(--shadow-accent)",
               }}
             >
               <Icon name="sparkle" size={13} />
@@ -137,7 +137,7 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
       </nav>
 
       {/* Sections */}
-      <main className="max-w-4xl mx-auto px-4 md:px-8">
+      <main id="main" tabIndex={-1} className="max-w-4xl mx-auto px-4 md:px-8">
         {/* Overview */}
         <section id="overview" className="pt-20 pb-28">
           <OverviewHero
@@ -185,7 +185,6 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
               required={data.match_analysis.required_skills}
               matching={data.match_analysis.matching_skills}
               gaps={data.match_analysis.skill_gaps}
-              score={data.match_analysis.match_score}
             />
           </Reveal>
         </section>

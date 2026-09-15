@@ -9,6 +9,7 @@ import {
   mergeExtracted,
   RESUME_STORAGE_KEY,
   readTailoredMeta,
+  clearTailoredMeta,
   restoreResumeBackup,
   TailoredMeta,
 } from "@/lib/resume-types";
@@ -33,12 +34,15 @@ export default function BuilderPage() {
   const [imported, setImported] = useState(false);
   const [tailoredMeta, setTailoredMeta] = useState<TailoredMeta | null>(null);
 
+  // Hydrate from localStorage after mount — it cannot be read during render
+  // without breaking hydration, so these writes are deliberate.
   useEffect(() => {
     let hasSaved = false;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setData({ ...createEmptyResume(), ...parsed });
         // If there's meaningful saved data, skip the entry screen
         if (parsed?.personal?.fullName || parsed?.summary || (parsed?.experience?.length)) {
@@ -57,11 +61,16 @@ export default function BuilderPage() {
     setLoaded(true);
   }, []);
 
+  // Autosave, debounced: without this the whole resume is serialized to
+  // localStorage on every keystroke.
   useEffect(() => {
     if (!loaded || screen !== "builder") return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    const id = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch {}
+    }, 400);
+    return () => clearTimeout(id);
   }, [data, loaded, screen]);
 
   const handleClear = () => {
@@ -227,6 +236,7 @@ export default function BuilderPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
+                  type="button"
                   onClick={() => {
                     if (restoreResumeBackup()) {
                       try {
@@ -234,6 +244,7 @@ export default function BuilderPage() {
                         if (saved) setData({ ...createEmptyResume(), ...JSON.parse(saved) });
                       } catch {}
                     }
+                    clearTailoredMeta();
                     setTailoredMeta(null);
                   }}
                   className="text-[11px] px-2.5 py-1 rounded-lg"
@@ -241,7 +252,15 @@ export default function BuilderPage() {
                 >
                   Restore original
                 </button>
-                <button onClick={() => setTailoredMeta(null)} className="icon-btn opacity-70 hover:opacity-100" style={{ color: "var(--accent-bright)" }} aria-label="Dismiss"><Icon name="x" size={15} /></button>
+                <button
+                  type="button"
+                  onClick={() => { clearTailoredMeta(); setTailoredMeta(null); }}
+                  className="icon-btn opacity-70 hover:opacity-100"
+                  style={{ color: "var(--accent-bright)" }}
+                  aria-label="Dismiss tailored resume summary"
+                >
+                  <Icon name="x" size={15} />
+                </button>
               </div>
             </div>
           </motion.div>

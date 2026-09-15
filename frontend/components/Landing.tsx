@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Icon, type IconName } from "./ui/Icon";
 import { ThemeToggle } from "./ui/ThemeToggle";
@@ -10,31 +11,50 @@ interface Props {
 }
 
 export function Landing({ onGetStarted }: Props) {
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const rootRef = useRef<HTMLDivElement>(null);
 
+  // Parallax is written straight to CSS custom properties and coalesced into one
+  // frame per repaint. Routing it through React state instead would re-render
+  // this entire page on every pointer move.
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) return;
+
+    let frame = 0;
     const handle = (e: MouseEvent) => {
-      setMouse({
-        x: (e.clientX - window.innerWidth / 2) / window.innerWidth,
-        y: (e.clientY - window.innerHeight / 2) / window.innerHeight,
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const el = rootRef.current;
+        if (!el) return;
+        const x = (e.clientX - window.innerWidth / 2) / window.innerWidth;
+        const y = (e.clientY - window.innerHeight / 2) / window.innerHeight;
+        el.style.setProperty("--mx", String(x));
+        el.style.setProperty("--my", String(y));
       });
     };
-    window.addEventListener("mousemove", handle);
-    return () => window.removeEventListener("mousemove", handle);
+
+    window.addEventListener("mousemove", handle, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", handle);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
+    <div
+      ref={rootRef}
+      className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{ ["--mx" as string]: 0, ["--my" as string]: 0 }}
+    >
       {/* Background atmosphere — restrained */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute w-[720px] h-[720px] rounded-full opacity-[0.05] blur-[150px]"
           style={{
             background: "var(--accent)",
-            left: `calc(50% + ${mouse.x * 20}px)`,
-            top: `calc(22% + ${mouse.y * 20}px)`,
+            left: "calc(50% + (var(--mx) * 20px))",
+            top: "calc(22% + (var(--my) * 20px))",
             transform: "translate(-50%, -50%)",
             transition: "left 0.7s ease-out, top 0.7s ease-out",
           }}
@@ -62,19 +82,19 @@ export function Landing({ onGetStarted }: Props) {
           >
             Analyze
           </button>
-          <a
+          <Link
             href="/builder"
             className="text-[13px] font-medium transition-opacity hover:opacity-70"
             style={{ color: "var(--text-secondary)" }}
           >
             Resume Builder
-          </a>
+          </Link>
           <ThemeToggle />
         </div>
       </header>
 
       {/* Hero */}
-      <main className="relative z-10 flex items-center px-6 md:px-10 lg:px-16 py-14 lg:py-20">
+      <main id="main" tabIndex={-1} className="relative z-10 flex items-center px-6 md:px-10 lg:px-16 py-14 lg:py-20">
         <div className="w-full max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.05fr] gap-12 lg:gap-16 items-center">
           {/* Left — plain-spoken copy */}
           <div>
@@ -129,10 +149,10 @@ export function Landing({ onGetStarted }: Props) {
                   <Icon name="arrow-right" size={18} />
                 </span>
               </button>
-              <a href="/builder" className="btn btn-secondary btn-lg magnetic-btn">
+              <Link href="/builder" className="btn btn-secondary btn-lg magnetic-btn">
                 <Icon name="pencil" size={16} />
                 <span>Build a resume instead</span>
-              </a>
+              </Link>
             </motion.div>
 
             <motion.p
@@ -159,7 +179,8 @@ export function Landing({ onGetStarted }: Props) {
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
                 boxShadow: "var(--shadow-elevated)",
-                transform: `perspective(1200px) rotateY(${mouse.x * 1.5}deg) rotateX(${-mouse.y * 1.5}deg)`,
+                transform:
+                  "perspective(1200px) rotateY(calc(var(--mx) * 1.5deg)) rotateX(calc(var(--my) * -1.5deg))",
                 transition: "transform 0.5s ease-out",
               }}
             >
@@ -406,10 +427,10 @@ export function Landing({ onGetStarted }: Props) {
               education — and export a polished, one-page PDF. Or import an existing file, then let
               the analyzer tailor it to a specific job.
             </p>
-            <a href="/builder" className="btn btn-secondary btn-lg magnetic-btn">
+            <Link href="/builder" className="btn btn-secondary btn-lg magnetic-btn">
               <Icon name="pencil" size={16} />
               <span>Open the resume builder</span>
-            </a>
+            </Link>
           </div>
 
           {/* builder mock */}
@@ -480,10 +501,10 @@ export function Landing({ onGetStarted }: Props) {
                 <Icon name="arrow-right" size={18} />
               </span>
             </button>
-            <a href="/builder" className="btn btn-secondary btn-lg magnetic-btn">
+            <Link href="/builder" className="btn btn-secondary btn-lg magnetic-btn">
               <Icon name="pencil" size={16} />
               <span>Build a resume instead</span>
-            </a>
+            </Link>
           </div>
           <p className="text-[12px] mt-6" style={{ color: "var(--text-muted)" }}>
             No account. Runs on your job, your words.

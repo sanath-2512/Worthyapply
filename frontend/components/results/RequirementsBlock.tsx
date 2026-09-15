@@ -23,9 +23,16 @@ export function RequirementsBlock({ technical, soft, responsibilities, keywords,
         {/* Technical */}
         <div>
           <Label>Technical Skills</Label>
-          <div className="flex flex-wrap gap-2">
-            {technical.map((s) => <Chip key={s}>{s}</Chip>)}
-          </div>
+          {technical.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {technical.map((s) => <Chip key={s}>{s}</Chip>)}
+            </div>
+          ) : (
+            <EmptyNote>
+              This job description doesn&apos;t name specific technical skills. Lean on
+              the responsibilities below to judge what the role actually involves.
+            </EmptyNote>
+          )}
         </div>
 
         {soft.length > 0 && (
@@ -40,6 +47,9 @@ export function RequirementsBlock({ technical, soft, responsibilities, keywords,
         {/* Responsibilities */}
         <div>
           <Label>Responsibilities</Label>
+          {responsibilities.length === 0 && (
+            <EmptyNote>No day-to-day responsibilities were spelled out in this posting.</EmptyNote>
+          )}
           <div className="space-y-2.5">
             {visible.map((r, i) => (
               <div key={i} className="flex items-start gap-3">
@@ -68,20 +78,22 @@ export function RequirementsBlock({ technical, soft, responsibilities, keywords,
         </div>
 
         {/* Keywords */}
-        <div>
-          <Label>Keywords</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {keywords.map((k) => (
-              <span
-                key={k}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}
-              >
-                {k}
-              </span>
-            ))}
+        {keywords.length > 0 && (
+          <div>
+            <Label>Keywords</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {keywords.map((k) => (
+                <span
+                  key={k}
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}
+                >
+                  {k}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Nice to Have */}
         {niceToHave.length > 0 && <Collapsible title={`Nice to Have (${niceToHave.length})`}>
@@ -121,6 +133,17 @@ function Label({ children }: { children: React.ReactNode }) {
     >
       {children}
     </h3>
+  );
+}
+
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="text-[13px] leading-relaxed rounded-xl border border-dashed px-4 py-3.5"
+      style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+    >
+      {children}
+    </p>
   );
 }
 

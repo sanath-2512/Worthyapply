@@ -119,7 +119,7 @@ export function ResumeImport({ onImported, onBack }: Props) {
                 </p>
 
                 {error && (
-                  <div className="mb-4 p-3 rounded-lg border text-sm" style={{ background: "var(--red-dim)", borderColor: "rgba(255,0,102,0.2)", color: "var(--red)" }}>
+                  <div className="mb-4 p-3 rounded-lg border text-sm" style={{ background: "var(--red-dim)", borderColor: "var(--red-glow)", color: "var(--red)" }}>
                     {error}
                   </div>
                 )}

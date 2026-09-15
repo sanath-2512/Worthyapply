@@ -180,7 +180,7 @@ export function saveTailoredResume(
   }
 }
 
-/** Read and consume the tailored metadata (returns null if none). */
+/** Read the tailored metadata (returns null if none). */
 export function readTailoredMeta(): TailoredMeta | null {
   try {
     const raw = localStorage.getItem(TAILORED_META_KEY);
@@ -188,6 +188,18 @@ export function readTailoredMeta(): TailoredMeta | null {
     return JSON.parse(raw) as TailoredMeta;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Consume the tailored metadata so the banner does not reappear on every later
+ * visit to the builder. The tailored resume itself and its backup are untouched.
+ */
+export function clearTailoredMeta(): void {
+  try {
+    localStorage.removeItem(TAILORED_META_KEY);
+  } catch {
+    // storage unavailable — the banner simply stays for this session
   }
 }
 
