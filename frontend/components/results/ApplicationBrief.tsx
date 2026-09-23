@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { AnalysisResponse } from "@/lib/types";
 import { Icon } from "../ui/Icon";
+import { Button } from "../ui/Button";
+import { SectionHeading } from "../ui/SectionHeading";
+import { useToast } from "../ui/Toast";
+import { copyText } from "./CopyButton";
 
 interface Props {
   data: AnalysisResponse;
@@ -10,6 +14,7 @@ interface Props {
 
 export function ApplicationBrief({ data }: Props) {
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
   const { job_analysis: ja, match_analysis: ma, resume_optimization: ro } = data;
 
@@ -26,17 +31,9 @@ Biggest Gap: ${biggestGap}
 Top Priority: ${topPriority}`;
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(briefText);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = briefText;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
+    await copyText(briefText);
     setCopied(true);
+    toast("Application brief copied");
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -45,30 +42,17 @@ Top Priority: ${topPriority}`;
 
   return (
     <div>
-      <div className="mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1" style={{ color: "var(--text)" }}>
-          Application Brief
-        </h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Your concise takeaway
-        </p>
-      </div>
+      <SectionHeading eyebrow="Takeaway" title="Application brief" sub="Your concise summary — copy it into your notes or tracker." className="mb-10" />
 
-      <div
-        className="rounded-2xl border p-6 md:p-8 space-y-6"
-        style={{ background: "var(--surface)", borderColor: "var(--border-subtle)" }}
-      >
+      <div className="card-elevated overflow-hidden">
         {/* Role */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>Role</span>
-            <p className="text-lg font-bold mt-1" style={{ color: "var(--text)" }}>{ja.job_title}</p>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{ja.company} · {ja.experience_required}</p>
+        <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="min-w-0">
+            <span className="text-[11px] font-mono uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>Role</span>
+            <p className="text-xl font-semibold tracking-tight mt-1.5 break-words" style={{ color: "var(--text)" }}>{ja.job_title}</p>
+            <p className="text-[14px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{ja.company} · {ja.experience_required}</p>
           </div>
-          <span
-            className="pill shrink-0"
-            style={{ background: recBg, color: recColor }}
-          >
+          <span className="pill shrink-0 self-start" style={{ background: recBg, color: recColor }}>
             {ma.recommendation === "Apply" && <Icon name="check" size={12} />}
             {ma.recommendation === "Maybe" && <Icon name="alert" size={12} />}
             {ma.recommendation === "Do Not Apply" && <Icon name="x" size={12} />}
@@ -76,40 +60,28 @@ Top Priority: ${topPriority}`;
           </span>
         </div>
 
-        <div className="h-px" style={{ background: "var(--border-subtle)" }} />
-
         {/* Key metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* gap-px over a border-coloured backdrop draws hairlines between cells at every breakpoint */}
+        <dl className="grid grid-cols-2 md:grid-cols-4 gap-px border-y" style={{ borderColor: "var(--border-subtle)", background: "var(--border-subtle)" }}>
           <BriefStat label="Score" value={`${ma.match_score}`} color={recColor} />
           <BriefStat label="Matched" value={`${ma.matching_skills.length}`} color="var(--green)" />
           <BriefStat label="Gaps" value={`${ma.skill_gaps.length}`} color={ma.skill_gaps.length > 0 ? "var(--amber)" : "var(--green)"} />
-          <BriefStat label="Required" value={`${ma.required_skills.length}`} color="var(--text-secondary)" />
-        </div>
-
-        <div className="h-px" style={{ background: "var(--border-subtle)" }} />
+          <BriefStat label="Required" value={`${ma.required_skills.length}`} color="var(--text)" />
+        </dl>
 
         {/* Key info */}
-        <div className="space-y-3">
-          <BriefRow label="Strongest Match" value={strongestMatches} />
-          <BriefRow label="Biggest Gap" value={biggestGap} />
-          <BriefRow label="Top Priority" value={topPriority} />
-        </div>
-
-        <div className="h-px" style={{ background: "var(--border-subtle)" }} />
+        <dl className="p-6 sm:p-8 space-y-4">
+          <BriefRow label="Strongest match" value={strongestMatches} />
+          <BriefRow label="Biggest gap" value={biggestGap} />
+          <BriefRow label="Top priority" value={topPriority} />
+        </dl>
 
         {/* Copy */}
-        <button
-          onClick={handleCopy}
-          className="btn magnetic-btn w-full"
-          style={{
-            background: copied ? "var(--green-dim)" : "var(--surface-elevated)",
-            color: copied ? "var(--green)" : "var(--text-secondary)",
-            borderColor: copied ? "var(--green)" : "var(--border)",
-          }}
-        >
-          <Icon name={copied ? "check" : "copy"} size={15} />
-          {copied ? "Copied" : "Copy Brief"}
-        </button>
+        <div className="px-6 sm:px-8 pb-6 sm:pb-8">
+          <Button variant={copied ? "secondary" : "primary"} fullWidth onClick={handleCopy} iconLeft={copied ? "check" : "copy"}>
+            {copied ? "Copied" : "Copy brief"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -117,18 +89,18 @@ Top Priority: ${topPriority}`;
 
 function BriefStat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="text-center">
-      <div className="text-xl font-bold tabular-nums" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>{value}</div>
-      <div className="text-[10px] font-medium uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>{label}</div>
+    <div className="flex flex-col text-center py-5" style={{ background: "var(--surface)" }}>
+      <dt className="order-2 text-[11px] font-mono uppercase tracking-[0.12em] mt-1" style={{ color: "var(--text-muted)" }}>{label}</dt>
+      <dd className="order-1 text-2xl font-semibold tabular tracking-tight" style={{ color }}>{value}</dd>
     </div>
   );
 }
 
 function BriefRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--text-muted)" }}>{label}</span>
-      <span className="text-sm text-right" style={{ color: "var(--text-secondary)" }}>{value}</span>
+    <div className="grid sm:grid-cols-[160px_1fr] gap-1 sm:gap-4">
+      <dt className="text-[11px] font-mono uppercase tracking-[0.12em] pt-0.5" style={{ color: "var(--text-muted)" }}>{label}</dt>
+      <dd className="text-[14px] leading-relaxed" style={{ color: "var(--text)" }}>{value}</dd>
     </div>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   ResumeData, generateId,
 } from "@/lib/resume-types";
+import { AnimatePresence, motion } from "framer-motion";
 import { RichTextEditor } from "./RichTextEditor";
 import { Icon } from "../ui/Icon";
-import "./rich-text.css";
+import { Button } from "../ui/Button";
 
 interface Props {
   data: ResumeData;
@@ -31,7 +32,7 @@ export function ResumeEditor({ data, onChange, onClear }: Props) {
   }
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-5 pb-16">
       {/* PERSONAL */}
       <Group title="Personal Details">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -178,18 +179,33 @@ export function ResumeEditor({ data, onChange, onClear }: Props) {
       </Group>
 
       {/* CLEAR */}
-      <div className="pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-        {!confirmClear ? (
-          <button onClick={() => setConfirmClear(true)} className="text-[11px] font-medium" style={{ color: "var(--red)" }}>
-            Clear all resume data
-          </button>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="text-[11px]" style={{ color: "var(--red)" }}>Are you sure?</span>
-            <button onClick={() => { onClear(); setConfirmClear(false); }} className="text-[11px] font-bold px-3 py-1 rounded-lg" style={{ background: "var(--red-dim)", color: "var(--red)" }}>Yes, clear</button>
-            <button onClick={() => setConfirmClear(false)} className="text-[11px]" style={{ color: "var(--text-muted)" }}>Cancel</button>
-          </div>
-        )}
+      <div className="pt-6 mt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+        <AnimatePresence mode="wait" initial={false}>
+          {!confirmClear ? (
+            <motion.div key="ask" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Button variant="ghost" size="sm" iconLeft="trash" onClick={() => setConfirmClear(true)} className="!text-[var(--red)]">
+                Clear all resume data
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="confirm"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-wrap items-center gap-3 p-3 rounded-xl"
+              style={{ background: "var(--red-dim)", border: "1px solid var(--red-glow)" }}
+              role="alertdialog"
+              aria-label="Confirm clearing all resume data"
+            >
+              <span className="text-[13px] font-medium flex-1 min-w-[160px]" style={{ color: "var(--text)" }}>
+                Clear everything? This can&apos;t be undone.
+              </span>
+              <Button variant="danger" size="xs" onClick={() => { onClear(); setConfirmClear(false); }}>Yes, clear</Button>
+              <Button variant="ghost" size="xs" onClick={() => setConfirmClear(false)} autoFocus>Cancel</Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -206,87 +222,146 @@ function patchArr<K extends keyof ResumeData>(
 
 // ─── Primitives ───
 function Group({ title, children, onAdd, empty, emptyText }: { title: string; children: React.ReactNode; onAdd?: () => void; empty?: boolean; emptyText?: string }) {
+  const count = Array.isArray(children) ? children.length : undefined;
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{title}</h3>
-        {onAdd && <button onClick={onAdd} className="text-[11px] font-medium" style={{ color: "var(--accent)" }}>+ Add</button>}
+    <section className="card p-4 sm:p-5" aria-label={title}>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h3 className="text-[14px] font-semibold tracking-[-0.01em] inline-flex items-center gap-2" style={{ color: "var(--text)" }}>
+          {title}
+          {onAdd && !empty && count !== undefined && (
+            <span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--surface-elevated)", color: "var(--text-muted)" }}>{count}</span>
+          )}
+        </h3>
+        {onAdd && (
+          <Button variant="secondary" size="xs" iconLeft="plus" onClick={onAdd} aria-label={`Add ${title}`}>
+            Add
+          </Button>
+        )}
       </div>
       {empty && emptyText ? (
-        <div className="text-[12px] rounded-xl border border-dashed p-4 text-center" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
-          {emptyText}
-        </div>
-      ) : children}
-    </div>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="w-full text-[13px] rounded-xl border border-dashed p-5 text-center transition-colors hover:border-[var(--accent)] hover:text-[var(--text-secondary)]"
+          style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+        >
+          {emptyText} <span style={{ color: "var(--accent-bright)" }}>Add one</span>
+        </button>
+      ) : (
+        <div className="space-y-3">{children}</div>
+      )}
+    </section>
   );
 }
 
 function Entry({ children, onRemove, onMove, index, total }: { children: React.ReactNode; onRemove: () => void; onMove: (dir: number) => void; index: number; total: number }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="p-4 rounded-xl border mb-3" style={{ background: "var(--surface)", borderColor: "var(--border-subtle)" }}>
-      <div className="flex justify-between items-center mb-3">
-        <div className="flex gap-1">
-          <button onClick={() => onMove(-1)} disabled={index === 0} className="icon-btn disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move up"><Icon name="chevron-up" size={15} /></button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} className="icon-btn disabled:opacity-20" style={{ color: "var(--text-muted)" }} aria-label="Move down"><Icon name="chevron-down" size={15} /></button>
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="p-4 rounded-xl border"
+      style={{ background: "var(--bg)", borderColor: "var(--border-subtle)" }}
+    >
+      <div className="flex justify-between items-center mb-3 -mt-1">
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] font-mono mr-1.5" style={{ color: "var(--text-muted)" }}>#{index + 1}</span>
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="icon-btn !min-w-8 !min-h-8 disabled:opacity-25" style={{ color: "var(--text-muted)" }} aria-label="Move up"><Icon name="chevron-up" size={15} /></button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="icon-btn !min-w-8 !min-h-8 disabled:opacity-25" style={{ color: "var(--text-muted)" }} aria-label="Move down"><Icon name="chevron-down" size={15} /></button>
         </div>
-        {!confirming ? (
-          <button onClick={() => setConfirming(true)} className="text-[10px] px-2 py-0.5 rounded" style={{ color: "var(--red)", background: "var(--red-dim)" }}>Delete</button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px]" style={{ color: "var(--red)" }}>Delete?</span>
-            <button onClick={onRemove} className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: "var(--red-dim)", color: "var(--red)" }}>Yes</button>
-            <button onClick={() => setConfirming(false)} className="text-[10px]" style={{ color: "var(--text-muted)" }}>No</button>
-          </div>
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          {!confirming ? (
+            <motion.button
+              key="del"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirming(true)}
+              className="icon-btn !min-w-8 !min-h-8"
+              style={{ color: "var(--red)" }}
+              aria-label="Delete entry"
+            >
+              <Icon name="trash" size={14} />
+            </motion.button>
+          ) : (
+            <motion.div key="confirm" initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5">
+              <span className="text-[12px]" style={{ color: "var(--red)" }}>Delete?</span>
+              <Button variant="danger" size="xs" onClick={onRemove}>Yes</Button>
+              <Button variant="ghost" size="xs" onClick={() => setConfirming(false)}>No</Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       {children}
-    </div>
+    </motion.div>
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] mb-1.5" style={{ color: "var(--text-muted)" }}>{children}</label>;
+function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  return <label htmlFor={htmlFor} className="field-label">{children}</label>;
 }
 
 function Field({ label, value, onChange, placeholder, className = "", disabled }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string; disabled?: boolean }) {
+  const id = useId();
   return (
     <div className={className}>
-      <FieldLabel>{label}</FieldLabel>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <input
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full rounded-lg px-3 py-2 text-sm border focus:outline-none focus:border-[var(--accent)] disabled:opacity-40"
-        style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+        className="field h-10 px-3"
       />
     </div>
   );
 }
 
 function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  const id = useId();
   return (
     <div>
-      <FieldLabel>{label}</FieldLabel>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg px-3 py-2 text-sm border focus:outline-none focus:border-[var(--accent)]"
-        style={{ background: "var(--surface)", borderColor: "var(--border)", color: value ? "var(--text)" : "var(--text-muted)" }}
-      >
-        <option value="">Select...</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="field h-10 pl-3 pr-9 appearance-none cursor-pointer"
+          style={{ color: value ? "var(--text)" : "var(--text-muted)" }}
+        >
+          <option value="">Select...</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }}>
+          <Icon name="chevron-down" size={14} />
+        </span>
+      </div>
     </div>
   );
 }
 
 function Checkbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (c: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-[var(--accent)]" />
-      <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>{label}</span>
+    <label className="inline-flex items-center gap-2.5 cursor-pointer select-none group">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+      <span
+        className="w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--bg)]"
+        style={{
+          background: checked ? "var(--accent)" : "var(--bg-elevated)",
+          borderColor: checked ? "var(--accent)" : "var(--border-strong)",
+          color: "#fff",
+        }}
+        aria-hidden="true"
+      >
+        <span className="transition-transform duration-200" style={{ transform: checked ? "scale(1)" : "scale(0)" }}>
+          <Icon name="check" size={12} strokeWidth={3} />
+        </span>
+      </span>
+      <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{label}</span>
     </label>
   );
 }

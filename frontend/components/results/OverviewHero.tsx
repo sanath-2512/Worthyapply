@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useRef } from "react";
+import { gsap, useGsap } from "@/lib/motion";
 import { Icon } from "../ui/Icon";
+import { Button } from "../ui/Button";
+import { ScoreRing } from "../ui/ScoreRing";
+import { CountUp } from "../motion/CountUp";
+import { useMediaQuery } from "@/lib/use-media";
 
 interface Props {
   jobTitle: string;
@@ -17,6 +21,12 @@ interface Props {
   onScrollToTailor?: () => void;
 }
 
+const VERDICT = {
+  Apply: { color: "var(--green)", bg: "var(--green-dim)", icon: "check" as const, line: "Strong fit — worth applying." },
+  Maybe: { color: "var(--amber)", bg: "var(--amber-dim)", icon: "alert" as const, line: "Borderline — tailor before you apply." },
+  "Do Not Apply": { color: "var(--red)", bg: "var(--red-dim)", icon: "x" as const, line: "Significant gaps for this role." },
+};
+
 export function OverviewHero({
   jobTitle,
   company,
@@ -29,162 +39,97 @@ export function OverviewHero({
   total,
   onScrollToTailor,
 }: Props) {
-  const [animScore, setAnimScore] = useState(0);
-
-  useEffect(() => {
-    // Under reduced-motion the first frame lands on the final value, so the
-    // count-up is skipped without a separate synchronous state write.
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const duration = reduced ? 0 : 1400;
-
-    let frame = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const p = duration === 0 ? 1 : Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 4);
-      setAnimScore(Math.round(eased * score));
-      if (p < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [score]);
+  const ref = useRef<HTMLDivElement>(null);
+  const large = useMediaQuery("(min-width: 640px)", true);
 
   const color = score >= 70 ? "var(--green)" : score >= 45 ? "var(--amber)" : "var(--red)";
-  const recColor = recommendation === "Apply" ? "var(--green)" : recommendation === "Maybe" ? "var(--amber)" : "var(--red)";
-  const recBg = recommendation === "Apply" ? "var(--green-dim)" : recommendation === "Maybe" ? "var(--amber-dim)" : "var(--red-dim)";
+  const verdict = VERDICT[recommendation] ?? VERDICT.Maybe;
+
+  useGsap(
+    ({ reduced, scope }) => {
+      if (reduced) return;
+      gsap.from(scope.querySelectorAll("[data-ov]"), {
+        y: 22,
+        autoAlpha: 0,
+        filter: "blur(6px)",
+        duration: 1.1,
+        stagger: 0.07,
+        delay: 0.15,
+        ease: "expo.out",
+        clearProps: "filter",
+      });
+      gsap.from(scope.querySelector("[data-ring]"), { scale: 0.86, autoAlpha: 0, duration: 1.4, ease: "expo.out", delay: 0.05 });
+    },
+    [],
+    ref
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-    >
-      {/* Section label */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.05 }}
-        className="eyebrow text-center mb-8"
-      >
-        Application Intelligence
-      </motion.p>
-
-      {/* Score — dominant visual */}
-      <div className="text-center mb-6">
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.6, type: "spring", stiffness: 120 }}
-        >
-          {/* Announce the final score once, not every count-up frame. */}
-          <span className="sr-only">Match score: {score} out of 100</span>
-          <span
-            aria-hidden="true"
-            className="text-[8rem] md:text-[10rem] lg:text-[12rem] font-black leading-none tabular-nums block"
-            style={{ color, fontFamily: "'Inter', sans-serif" }}
-          >
-            {animScore}
-          </span>
-        </motion.div>
-        <motion.span
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="text-[10px] font-semibold uppercase tracking-[0.3em]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Match Score
-        </motion.span>
+    <div ref={ref} className="grid md:grid-cols-[1.1fr_0.9fr] gap-10 md:gap-12 items-center">
+      {/* Score */}
+      <div data-ring className="relative md:order-2 flex justify-center">
+        <div
+          className="absolute inset-0 m-auto w-[80%] aspect-square rounded-full blur-3xl opacity-50"
+          style={{ background: `radial-gradient(circle, color-mix(in srgb, ${color} 35%, transparent), transparent 65%)` }}
+          aria-hidden="true"
+        />
+        <ScoreRing score={score} color={color} size={large ? 300 : 230} stroke={large ? 12 : 10} delay={0.35} />
       </div>
 
-      {/* Job info + recommendation */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
-        className="text-center mb-12"
-      >
-        <h1
-          className="text-2xl md:text-3xl font-bold tracking-tight mb-2"
-          style={{ color: "var(--text)" }}
-        >
+      {/* Verdict */}
+      <div className="md:order-1 text-center md:text-left">
+        <p data-ov className="eyebrow mb-4 justify-center md:justify-start">
+          <span className="w-4 h-px" style={{ background: "currentColor" }} aria-hidden="true" />
+          Application intelligence
+        </p>
+        <h1 data-ov className="display-md break-words" style={{ color: "var(--text)" }}>
           {jobTitle}
         </h1>
-        <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>
-          {company} · {experience}
+        <p data-ov className="mt-3 text-[15px]" style={{ color: "var(--text-secondary)" }}>
+          {company} <span style={{ color: "var(--border-strong)" }}>·</span> {experience}
         </p>
-        <span
-          className="pill"
-          style={{ background: recBg, color: recColor }}
-        >
-          {recommendation === "Apply" && <Icon name="check" size={13} />}
-          {recommendation === "Maybe" && <Icon name="alert" size={13} />}
-          {recommendation === "Do Not Apply" && <Icon name="x" size={13} />}
-          {recommendation}
-        </span>
-      </motion.div>
 
-      {/* Stats row */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.55, duration: 0.4 }}
-        className="grid grid-cols-3 gap-3 max-w-sm mx-auto mb-10"
-      >
-        <Stat value={matched} label="Matched" color="var(--green)" />
-        <Stat value={gaps} label="Gaps" color={gaps > 0 ? "var(--amber)" : "var(--green)"} />
-        <Stat value={total} label="Required" color="var(--text-secondary)" />
-      </motion.div>
+        <div data-ov className="mt-6 flex flex-wrap items-center justify-center md:justify-start gap-3">
+          <span className="pill" style={{ background: verdict.bg, color: verdict.color }}>
+            <Icon name={verdict.icon} size={13} strokeWidth={2.25} />
+            {recommendation}
+          </span>
+          <span className="text-[13px]" style={{ color: "var(--text-muted)" }}>{verdict.line}</span>
+        </div>
 
-      {/* Reason */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
-        className="max-w-lg mx-auto text-center"
-      >
-        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        <p data-ov className="mt-5 text-[15px] leading-relaxed max-w-xl mx-auto md:mx-0" style={{ color: "var(--text-secondary)" }}>
           {reason}
         </p>
-      </motion.div>
 
-      {/* Hero Action Button */}
-      {onScrollToTailor && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="text-center mt-8"
-        >
-          <button
-            onClick={onScrollToTailor}
-            className="btn btn-primary magnetic-btn"
-          >
-            <Icon name="sparkle" size={16} />
-            <span>Generate Tailored Resume</span>
-            <Icon name="arrow-right" size={16} className="opacity-70" />
-          </button>
-        </motion.div>
-      )}
-    </motion.div>
+        {/* Stats */}
+        <dl data-ov className="mt-8 grid grid-cols-3 max-w-md mx-auto md:mx-0 rounded-2xl overflow-hidden border" style={{ borderColor: "var(--border-subtle)", background: "var(--surface)" }}>
+          <Stat value={matched} label="Matched" color="var(--green)" />
+          <Stat value={gaps} label="Gaps" color={gaps > 0 ? "var(--amber)" : "var(--green)"} border />
+          <Stat value={total} label="Required" color="var(--text)" border />
+        </dl>
+
+        {onScrollToTailor && (
+          <div data-ov className="mt-8 flex justify-center md:justify-start">
+            <Button magnetic onClick={onScrollToTailor} iconLeft="sparkle" iconRight="arrow-right">
+              Generate Tailored Resume
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-function Stat({ value, label, color }: { value: number; label: string; color: string }) {
+function Stat({ value, label, color, border }: { value: number; label: string; color: string; border?: boolean }) {
+  // dt precedes dd in the DOM (valid <dl>); flex order puts the number on top.
   return (
-    <div
-      className="text-center py-4 rounded-2xl border"
-      style={{ borderColor: "var(--border-subtle)", background: "var(--surface)" }}
-    >
-      <div
-        className="text-xl font-bold tabular-nums"
-        style={{ color, fontFamily: "'JetBrains Mono', monospace" }}
-      >
-        {value}
-      </div>
-      <div className="text-[10px] font-medium uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>
+    <div className={`py-4 px-3 text-center flex flex-col ${border ? "border-l" : ""}`} style={{ borderColor: "var(--border-subtle)" }}>
+      <dt className="order-2 text-[11px] font-mono uppercase tracking-[0.12em] mt-1" style={{ color: "var(--text-muted)" }}>
         {label}
-      </div>
+      </dt>
+      <dd className="order-1 text-2xl font-semibold tracking-tight" style={{ color }}>
+        <CountUp value={value} trigger="mount" delay={0.6} duration={1.2} />
+      </dd>
     </div>
   );
 }

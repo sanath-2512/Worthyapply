@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Icon } from "../ui/Icon";
+import { Accordion } from "../ui/Accordion";
+import { SectionHeading } from "../ui/SectionHeading";
 
 interface Props {
   summary: string;
@@ -12,80 +13,51 @@ interface Props {
 export function DetailsBlock({ summary, missing, warnings }: Props) {
   return (
     <div>
-      <div className="mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1" style={{ color: "var(--text)" }}>
-          Full details
-        </h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Complete analysis for deeper review
-        </p>
-      </div>
+      <SectionHeading eyebrow="Reference" title="Full details" sub="The complete analysis, for a deeper review." className="mb-10" />
 
-      <div className="space-y-4">
-        <Accordion title="Job Summary" defaultOpen>
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+      <div className="space-y-3">
+        <Accordion title="Job summary" icon="document" defaultOpen>
+          <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {summary}
           </p>
         </Accordion>
 
         {missing.length > 0 && (
-          <Accordion title={`Weak / Missing Requirements (${missing.length})`}>
-            <div className="space-y-2.5">
+          <Accordion
+            title="Weak or missing requirements"
+            icon="alert"
+            tone="var(--amber)"
+            meta={<span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>{missing.length}</span>}
+          >
+            <ul className="space-y-2.5">
               {missing.map((m, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                  <span className="mt-0.5 shrink-0" style={{ color: "var(--amber)" }}><Icon name="alert" size={14} /></span>
+                <li key={i} className="flex items-start gap-2.5 text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  <span className="mt-1 shrink-0" style={{ color: "var(--amber)" }}><Icon name="alert" size={13} /></span>
                   <span>{m}</span>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </Accordion>
         )}
 
         {warnings.length > 0 && (
-          <Accordion title={`Warnings (${warnings.length})`}>
-            <div className="p-4 rounded-xl space-y-2.5" style={{ background: "var(--red-dim)" }}>
+          <Accordion
+            title="Warnings"
+            icon="alert"
+            tone="var(--red)"
+            meta={<span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--red-dim)", color: "var(--red)" }}>{warnings.length}</span>}
+          >
+            <ul className="p-4 rounded-xl space-y-2.5" style={{ background: "var(--red-dim)" }}>
               {warnings.map((w, i) => (
-                <p key={i} className="flex items-start gap-2 text-sm" style={{ color: "var(--red)" }}>
-                  <span className="shrink-0">!</span>
+                <li key={i} className="flex items-start gap-2.5 text-[14px] leading-relaxed" style={{ color: "var(--text)" }}>
+                  <span className="mt-1 shrink-0" style={{ color: "var(--red)" }}><Icon name="alert" size={13} /></span>
                   <span>{w}</span>
-                </p>
+                </li>
               ))}
-            </div>
+            </ul>
           </Accordion>
         )}
       </div>
-    </div>
-  );
-}
-
-function Accordion({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ borderColor: "var(--border-subtle)", background: "var(--surface)" }}
-    >
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left"
-        aria-expanded={open}
-      >
-        <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          {title}
-        </span>
-        <span
-          className="transition-transform duration-200"
-          style={{ color: "var(--text-muted)", transform: open ? "rotate(180deg)" : "rotate(0)" }}
-        >
-          <Icon name="chevron-down" size={16} />
-        </span>
-      </button>
-      {open && (
-        <div className="px-5 pb-5 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-          <div className="pt-4">{children}</div>
-        </div>
-      )}
     </div>
   );
 }

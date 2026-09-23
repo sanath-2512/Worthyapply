@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "../ui/Icon";
+import { SectionHeading } from "../ui/SectionHeading";
+import { Accordion } from "../ui/Accordion";
+import { EmptyNote, Label } from "./shared";
 
 interface Props {
   technical: string[];
@@ -17,164 +21,104 @@ export function RequirementsBlock({ technical, soft, responsibilities, keywords,
 
   return (
     <div>
-      <SectionHeader title="What this role requires" sub="Key requirements from the job description" />
+      <SectionHeading eyebrow="The role" title="What this role requires" sub="Key requirements extracted from the job description." className="mb-10" />
 
-      <div className="space-y-10">
-        {/* Technical */}
-        <div>
-          <Label>Technical Skills</Label>
-          {technical.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {technical.map((s) => <Chip key={s}>{s}</Chip>)}
+      <div className="grid lg:grid-cols-[1fr_1.15fr] gap-5">
+        <div className="space-y-5">
+          <div className="card p-5 sm:p-6">
+            <Label>Technical skills</Label>
+            {technical.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {technical.map((s) => <span key={s} className="chip">{s}</span>)}
+              </div>
+            ) : (
+              <EmptyNote>
+                This job description doesn&apos;t name specific technical skills. Lean on
+                the responsibilities to judge what the role actually involves.
+              </EmptyNote>
+            )}
+          </div>
+
+          {soft.length > 0 && (
+            <div className="card p-5 sm:p-6">
+              <Label>Soft skills</Label>
+              <div className="flex flex-wrap gap-2">
+                {soft.map((s) => <span key={s} className="chip" style={{ color: "var(--text-secondary)" }}>{s}</span>)}
+              </div>
             </div>
-          ) : (
-            <EmptyNote>
-              This job description doesn&apos;t name specific technical skills. Lean on
-              the responsibilities below to judge what the role actually involves.
-            </EmptyNote>
+          )}
+
+          {keywords.length > 0 && (
+            <div className="card p-5 sm:p-6">
+              <Label>Keywords</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {keywords.map((k) => <span key={k} className="chip chip-accent">{k}</span>)}
+              </div>
+            </div>
           )}
         </div>
 
-        {soft.length > 0 && (
-          <div>
-            <Label>Soft Skills</Label>
-            <div className="flex flex-wrap gap-2">
-              {soft.map((s) => <Chip key={s} muted>{s}</Chip>)}
-            </div>
-          </div>
-        )}
-
         {/* Responsibilities */}
-        <div>
-          <Label>Responsibilities</Label>
+        <div className="card p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <Label>Responsibilities</Label>
+            {responsibilities.length > 0 && (
+              <span className="text-[11px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>{responsibilities.length}</span>
+            )}
+          </div>
           {responsibilities.length === 0 && (
             <EmptyNote>No day-to-day responsibilities were spelled out in this posting.</EmptyNote>
           )}
-          <div className="space-y-2.5">
-            {visible.map((r, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span
-                  className="shrink-0 text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-md mt-0.5"
-                  style={{ background: "var(--surface-elevated)", color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}
+          <ol className="space-y-3">
+            <AnimatePresence initial={false}>
+              {visible.map((r, i) => (
+                <motion.li
+                  key={i}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3, delay: i >= 5 ? (i - 5) * 0.03 : 0 }}
+                  className="flex items-start gap-3"
                 >
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  {r}
-                </span>
-              </div>
-            ))}
-          </div>
-          {responsibilities.length > 5 && !expanded && (
+                  <span
+                    className="shrink-0 text-[10.5px] font-mono w-6 h-6 flex items-center justify-center rounded-md mt-0.5"
+                    style={{ background: "var(--surface-elevated)", color: "var(--text-muted)" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-[14px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                    {r}
+                  </span>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ol>
+          {responsibilities.length > 5 && (
             <button
-              onClick={() => setExpanded(true)}
-              className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium"
+              onClick={() => setExpanded((e) => !e)}
+              className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-medium group"
               style={{ color: "var(--accent-bright)" }}
+              aria-expanded={expanded}
             >
-              Show all {responsibilities.length}
-              <Icon name="arrow-right" size={13} />
+              {expanded ? "Show fewer" : `Show all ${responsibilities.length}`}
+              <span className="inline-flex transition-transform duration-300" style={{ transform: expanded ? "rotate(180deg)" : "none" }}>
+                <Icon name="chevron-down" size={14} />
+              </span>
             </button>
           )}
         </div>
-
-        {/* Keywords */}
-        {keywords.length > 0 && (
-          <div>
-            <Label>Keywords</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {keywords.map((k) => (
-                <span
-                  key={k}
-                  className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                  style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}
-                >
-                  {k}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Nice to Have */}
-        {niceToHave.length > 0 && <Collapsible title={`Nice to Have (${niceToHave.length})`}>
-          <div className="flex flex-wrap gap-2">
-            {niceToHave.map((s) => (
-              <span
-                key={s}
-                className="text-[11px] px-2.5 py-1 rounded-lg"
-                style={{ border: "1px dashed var(--border)", color: "var(--text-muted)" }}
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        </Collapsible>}
       </div>
-    </div>
-  );
-}
 
-function SectionHeader({ title, sub }: { title: string; sub: string }) {
-  return (
-    <div className="mb-10">
-      <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1" style={{ color: "var(--text)" }}>
-        {title}
-      </h2>
-      <p className="text-sm" style={{ color: "var(--text-muted)" }}>{sub}</p>
-    </div>
-  );
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      className="text-[10px] font-bold uppercase tracking-[0.15em] mb-3"
-      style={{ color: "var(--text-muted)" }}
-    >
-      {children}
-    </h3>
-  );
-}
-
-function EmptyNote({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="text-[13px] leading-relaxed rounded-xl border border-dashed px-4 py-3.5"
-      style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-    >
-      {children}
-    </p>
-  );
-}
-
-function Chip({ children, muted }: { children: React.ReactNode; muted?: boolean }) {
-  return (
-    <span
-      className="text-[11px] font-medium px-3 py-1.5 rounded-lg"
-      style={{
-        background: "var(--surface-elevated)",
-        color: muted ? "var(--text-muted)" : "var(--text)",
-        border: "1px solid var(--border-subtle)",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Collapsible({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em]"
-        style={{ color: "var(--text-muted)" }}
-      >
-        <span className="inline-flex transition-transform duration-150" style={{ transform: open ? "rotate(90deg)" : "rotate(0)" }}><Icon name="chevron-right" size={14} /></span>
-        {title}
-      </button>
-      {open && <div className="mt-3 ml-4">{children}</div>}
+      {/* Nice to Have */}
+      {niceToHave.length > 0 && (
+        <div className="mt-5">
+          <Accordion title="Nice to have" icon="sparkle" meta={<span className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{niceToHave.length}</span>}>
+            <div className="flex flex-wrap gap-2">
+              {niceToHave.map((s) => <span key={s} className="chip chip-dashed">{s}</span>)}
+            </div>
+          </Accordion>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { AgentId } from "@/lib/api";
 import { Icon } from "./ui/Icon";
+import { Button } from "./ui/Button";
+import { Logo } from "./ui/Logo";
+import { StreamConsole } from "./ui/StreamConsole";
+import { SignalScene } from "./three/SignalScene";
+import { createDriver, type SceneDriver } from "./three/driver";
 
 export type AgentStatus = "pending" | "running" | "completed" | "error";
 
@@ -34,47 +39,42 @@ interface Props {
   onCancel?: () => void;
 }
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 function StatusMark({ status }: { status: AgentStatus }) {
+  const base = "relative z-10 w-6 h-6 rounded-full shrink-0 flex items-center justify-center transition-colors duration-300";
   if (status === "completed") {
     return (
-      <span
-        className="mt-0.5 w-4 h-4 rounded-full shrink-0 flex items-center justify-center"
-        style={{ background: "var(--green-dim)", color: "var(--green)" }}
+      <motion.span
+        initial={{ scale: 0.6 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 500, damping: 22 }}
+        className={base}
+        style={{ background: "var(--green)", color: "var(--bg)" }}
         aria-hidden="true"
       >
-        <Icon name="check" size={11} strokeWidth={2.5} />
-      </span>
+        <Icon name="check" size={12} strokeWidth={3} />
+      </motion.span>
     );
   }
   if (status === "error") {
     return (
-      <span
-        className="mt-0.5 w-4 h-4 rounded-full shrink-0 flex items-center justify-center"
-        style={{ background: "var(--red-dim)", color: "var(--red)" }}
-        aria-hidden="true"
-      >
-        <Icon name="x" size={11} strokeWidth={2.5} />
+      <span className={base} style={{ background: "var(--red)", color: "#fff" }} aria-hidden="true">
+        <Icon name="x" size={12} strokeWidth={3} />
       </span>
     );
   }
   if (status === "running") {
     return (
-      <motion.span
-        className="mt-1 w-2 h-2 rounded-full shrink-0"
-        style={{ background: "var(--accent)" }}
-        animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-        aria-hidden="true"
-      />
+      <span className={base} style={{ background: "var(--accent-dim)", color: "var(--accent-bright)", boxShadow: "0 0 0 1px var(--accent-glow)" }} aria-hidden="true">
+        <span className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
+      </span>
     );
   }
-  // pending
   return (
-    <span
-      className="mt-1 w-2 h-2 rounded-full shrink-0"
-      style={{ border: "1.5px solid var(--border)" }}
-      aria-hidden="true"
-    />
+    <span className={base} style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-hidden="true">
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--border-strong)" }} />
+    </span>
   );
 }
 
@@ -85,52 +85,51 @@ function statusColor(status: AgentStatus) {
   return "var(--text-muted)";
 }
 
-function Step({
-  agent,
-  live,
-}: {
-  agent: AgentUiState;
-  live?: string;
-}) {
+const STATUS_TEXT: Record<AgentStatus, string> = {
+  pending: "waiting",
+  running: "in progress",
+  completed: "done",
+  error: "failed",
+};
+
+function Step({ agent, last }: { agent: AgentUiState; last: boolean }) {
   const isActive = agent.status === "running";
   const isError = agent.status === "error";
   return (
-    <motion.div
-      role="listitem"
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.35 }}
-      className="flex items-start gap-3"
-    >
+    <li className="relative flex items-start gap-3.5 pb-5 last:pb-0">
+      {/* Connector to the next step fills in once this one completes. */}
+      {!last && (
+        <span className="absolute left-[11.5px] top-7 bottom-1 w-px" style={{ background: "var(--border)" }} aria-hidden="true">
+          <motion.span
+            className="absolute inset-x-0 top-0"
+            style={{ background: "var(--green)" }}
+            initial={false}
+            animate={{ height: agent.status === "completed" ? "100%" : "0%" }}
+            transition={{ duration: 0.6, ease: EASE }}
+          />
+        </span>
+      )}
       <StatusMark status={agent.status} />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium" style={{ color: statusColor(agent.status) }}>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-[14px] font-medium transition-colors duration-300" style={{ color: statusColor(agent.status) }}>
           {agent.label}
+          <span className="sr-only"> — {STATUS_TEXT[agent.status]}</span>
         </p>
-        {(isActive || isError) && agent.message && (
-          <p className="text-[11px]" style={{ color: isError ? "var(--red)" : "var(--text-muted)" }}>
-            {agent.message}
-          </p>
-        )}
-        {isActive && live && (
-          <div
-            className="mt-2 rounded-lg px-3 py-2 max-h-24 overflow-hidden text-[10.5px] leading-relaxed font-mono whitespace-pre-wrap break-words"
-            style={{
-              background: "var(--surface)",
-              color: "var(--text-muted)",
-              border: "1px solid var(--border-subtle)",
-            }}
-          >
-            {/* Show only the streaming tail so the box stays put. */}
-            {live.slice(-320)}
-            <span
-              className="inline-block w-1.5 h-3 ml-0.5 align-middle animate-pulse"
-              style={{ background: "var(--accent)" }}
-            />
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {(isActive || isError) && agent.message && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="text-[12px] mt-0.5 overflow-hidden"
+              style={{ color: isError ? "var(--red)" : "var(--text-muted)" }}
+            >
+              {agent.message}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
-    </motion.div>
+    </li>
   );
 }
 
@@ -144,6 +143,11 @@ function useElapsedSeconds() {
   return seconds;
 }
 
+function formatElapsed(s: number) {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
 export function Processing({
   agents = INITIAL_AGENTS,
   liveText = {},
@@ -151,6 +155,7 @@ export function Processing({
   onCancel,
 }: Props) {
   const elapsed = useElapsedSeconds();
+  const driver = useRef<SceneDriver>(createDriver({ progress: 0.04, energy: 1 }));
 
   const completed = agents.filter((a) => a.status === "completed").length;
   const total = agents.length;
@@ -159,104 +164,115 @@ export function Processing({
   const analysisSteps = agents.filter((a) => ANALYSIS_IDS.includes(a.id));
   const analysisRunning = analysisSteps.some((a) => a.status === "running");
   const analysisErrored = analysisSteps.some((a) => a.status === "error");
+  const anyError = agents.some((a) => a.status === "error");
+  const ordered = [...leadSteps, ...analysisSteps];
+
+  // The field behind the card assembles as real pipeline steps complete.
+  useEffect(() => {
+    driver.current.progress = 0.08 + 0.92 * (completed / Math.max(total, 1));
+    driver.current.energy = anyError ? 0.1 : 1;
+  }, [completed, total, anyError]);
+
+  // Stream tail from whichever agent is producing tokens right now.
+  const running = agents.find((a) => a.status === "running");
+  const live = (running && liveText[running.id]) || Object.values(liveText).filter(Boolean).pop() || "";
+
+  const pct = Math.round((completed / Math.max(total, 1)) * 100);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-16 relative">
-      <motion.div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+    <div className="min-h-[100svh] relative flex flex-col overflow-hidden">
+      <SignalScene driver={driver} className="absolute inset-0" interactive={false} />
+      <div
+        className="absolute inset-0 pointer-events-none"
         aria-hidden="true"
-      >
-        <motion.div
-          className="w-[350px] h-[350px] rounded-full blur-[120px] opacity-[0.05]"
-          style={{ background: "var(--accent)" }}
-          animate={{ scale: [1, 1.15, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </motion.div>
+        style={{ background: "radial-gradient(ellipse 60% 55% at 50% 50%, color-mix(in srgb, var(--bg) 55%, transparent) 0%, transparent 70%), linear-gradient(0deg, var(--bg) 0%, transparent 30%)" }}
+      />
 
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Orbital */}
-        <div className="flex justify-center mb-12">
-          <div className="relative w-20 h-20">
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ border: "1px solid var(--border)" }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            />
-            <motion.div
-              className="absolute inset-2 rounded-full"
-              style={{
-                border: "1.5px solid var(--accent)",
-                borderRightColor: "transparent",
-                borderBottomColor: "transparent",
-              }}
-              animate={{ rotate: -360 }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <motion.div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ background: "var(--accent)" }}
-                animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </div>
-          </div>
-        </div>
+      <header className="relative z-10 px-[var(--gutter)] h-[var(--header-h)] flex items-center justify-between">
+        <Logo size={26} />
+        <span className="inline-flex items-center gap-2 text-[12px] font-mono tabular" style={{ color: "var(--text-muted)" }}>
+          <span className="status-dot" data-pulse={!anyError} style={{ color: anyError ? "var(--red)" : "var(--accent)", width: 6, height: 6 }} />
+          <span aria-hidden="true">{formatElapsed(elapsed)}</span>
+        </span>
+      </header>
 
+      <main id="main" tabIndex={-1} className="relative z-10 flex-1 flex items-center justify-center px-[var(--gutter)] py-10 outline-none">
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-center mb-10"
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: EASE }}
+          className="w-full max-w-[440px] glass rounded-3xl p-6 sm:p-8"
+          style={{ boxShadow: "var(--shadow-pop)" }}
         >
-          <h2 className="text-xl font-bold mb-1" style={{ color: "var(--text)" }}>
-            Analyzing your application
-          </h2>
-          <p className="text-[11px]" style={{ color: "var(--text-muted)" }} aria-live="polite">
+          <p className="eyebrow mb-3">
+            <span className="w-4 h-px" style={{ background: "currentColor" }} aria-hidden="true" />
+            {anyError ? "Stopped" : "Analyzing"}
+          </p>
+          <h1 className="heading" style={{ color: "var(--text)" }}>
+            {anyError ? "Something went wrong" : "Reading your fit"}
+          </h1>
+          <p className="text-[13px] mt-2" style={{ color: "var(--text-muted)" }} aria-live="polite">
             {completed} of {total} steps complete
-            <span aria-hidden="true"> · {elapsed}s</span>
           </p>
-        </motion.div>
 
-        {/* Live phases */}
-        <div className="space-y-4" role="list" aria-label="Analysis progress">
-          {leadSteps.map((agent) => (
-            <Step key={agent.id} agent={agent} live={liveText[agent.id]} />
-          ))}
-
-          {analysisSteps.map((agent) => (
-            <Step key={agent.id} agent={agent} live={liveText[agent.id]} />
-          ))}
-        </div>
-
-        {/* One shared status line: the three phases above run in a single model
-            call, so this describes what that call is working through. */}
-        {analysisRunning && analysisMessage && (
-          <p
-            className="mt-5 text-[11px] leading-relaxed"
-            style={{ color: "var(--text-muted)" }}
-            aria-live="polite"
+          {/* Overall progress */}
+          <div
+            className="mt-5 h-1 rounded-full overflow-hidden"
+            style={{ background: "var(--surface-elevated)" }}
+            role="progressbar"
+            aria-label="Analysis progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
           >
-            {analysisMessage}
-          </p>
-        )}
-
-        {!analysisErrored && (
-          <p className="mt-6 text-[10.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            This usually takes 15–40 seconds. Keep this tab open.
-          </p>
-        )}
-
-        {onCancel && (
-          <div className="mt-6">
-            <button type="button" onClick={onCancel} className="btn btn-ghost btn-sm">
-              Cancel
-            </button>
+            <motion.div
+              className="h-full rounded-full relative overflow-hidden"
+              style={{ background: anyError ? "var(--red)" : "linear-gradient(90deg, var(--accent), var(--accent-2))" }}
+              initial={{ width: "4%" }}
+              animate={{ width: `${Math.max(4, pct)}%` }}
+              transition={{ duration: 0.8, ease: EASE }}
+            />
           </div>
-        )}
-      </div>
+
+          <ol className="mt-7" aria-label="Analysis steps">
+            {ordered.map((agent, i) => (
+              <Step key={agent.id} agent={agent} last={i === ordered.length - 1} />
+            ))}
+          </ol>
+
+          {/* One shared status line: the three phases above run in a single model
+              call, so this describes what that call is working through. */}
+          <AnimatePresence>
+            {analysisRunning && analysisMessage && (
+              <motion.p
+                key={analysisMessage}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-5 text-[12.5px] leading-relaxed flex items-center gap-2"
+                style={{ color: "var(--text-secondary)" }}
+                aria-live="polite"
+              >
+                <Icon name="sparkle" size={13} style={{ color: "var(--accent-bright)" }} />
+                {analysisMessage}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          <StreamConsole text={live} className="mt-5" maxHeight="6.5rem" />
+
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              {analysisErrored ? "Returning you to your inputs…" : "Usually 15–40 seconds. Keep this tab open."}
+            </p>
+            {onCancel && (
+              <Button variant="ghost" size="sm" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </motion.div>
+      </main>
     </div>
   );
 }

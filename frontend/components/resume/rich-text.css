@@ -1,12 +1,17 @@
 /* Reusable Rich Text Editor */
 .rte {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
+  border-radius: 10px;
+  background: var(--bg-elevated);
   overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.rte:hover:not(:focus-within) {
+  border-color: var(--border-strong);
 }
 .rte:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-dim);
 }
 
 .rte-toolbar {
@@ -55,8 +60,8 @@
 }
 .rte-content {
   padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--text);
   outline: none;
   min-height: 60px;
@@ -82,7 +87,7 @@
   position: absolute;
   top: 10px;
   left: 12px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   pointer-events: none;
 }

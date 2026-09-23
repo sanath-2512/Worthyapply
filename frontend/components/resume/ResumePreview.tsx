@@ -6,6 +6,7 @@ import { ResumeData } from "@/lib/resume-types";
 import { useMounted } from "@/lib/use-mounted";
 import { ResumeDocument } from "./ResumeDocument";
 import { Icon } from "../ui/Icon";
+import { Button } from "../ui/Button";
 
 interface Props {
   data: ResumeData;
@@ -64,43 +65,60 @@ export function ResumePreview({ data }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--text-muted)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-[11px] font-mono uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
             Worthy Classic
           </span>
-          {overflow && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md" style={{ background: "var(--amber-dim)", color: "var(--amber)" }}>
-              <Icon name="alert" size={13} /> Resume exceeds one page
+          {overflow ? (
+            <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2.5 py-1 rounded-full" style={{ background: "var(--amber-dim)", color: "var(--amber)" }} role="status">
+              <Icon name="alert" size={12} /> Exceeds one page
+            </span>
+          ) : (
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2.5 py-1 rounded-full" style={{ background: "var(--green-dim)", color: "var(--green)" }}>
+              <Icon name="check" size={12} strokeWidth={2.5} /> Fits one page
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: "var(--surface)" }}>
-            <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))} className="w-6 h-6 rounded flex items-center justify-center text-sm" style={{ color: "var(--text-secondary)" }} aria-label="Zoom out">−</button>
-            <span className="text-[10px] tabular-nums w-9 text-center" style={{ color: "var(--text-muted)" }}>{Math.round(effectiveScale * 100)}%</span>
-            <button onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="w-6 h-6 rounded flex items-center justify-center text-sm" style={{ color: "var(--text-secondary)" }} aria-label="Zoom in">+</button>
+          <div className="flex items-center gap-0.5 rounded-lg p-0.5" style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
+            <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))} className="icon-btn !min-w-8 !min-h-8 text-sm" style={{ color: "var(--text-secondary)" }} aria-label="Zoom out">−</button>
+            <button
+              onClick={() => setZoom(1)}
+              className="text-[11px] font-mono tabular w-11 h-8 rounded-md text-center hover:bg-[var(--surface)]"
+              style={{ color: "var(--text-muted)" }}
+              aria-label={`Zoom ${Math.round(effectiveScale * 100)}%. Reset to fit`}
+              title="Reset to fit"
+            >
+              {Math.round(effectiveScale * 100)}%
+            </button>
+            <button onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="icon-btn !min-w-8 !min-h-8 text-sm" style={{ color: "var(--text-secondary)" }} aria-label="Zoom in">+</button>
           </div>
 
-          <button
-            type="button"
+          <Button
+            size="sm"
             onClick={handleDownload}
             disabled={!data.personal.fullName}
-            className="btn btn-primary btn-sm magnetic-btn"
+            iconLeft="download"
             title={data.personal.fullName ? undefined : "Add your name to enable export"}
+            aria-describedby={data.personal.fullName ? undefined : "export-hint"}
           >
-            <Icon name="download" size={15} />
             Download PDF
-          </button>
+          </Button>
         </div>
+        {!data.personal.fullName && (
+          <p id="export-hint" className="w-full text-[12px] -mt-1 text-right" style={{ color: "var(--text-muted)" }}>
+            Add your full name to enable export.
+          </p>
+        )}
       </div>
 
       {/* On-screen scaled preview */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto rounded-xl p-6 flex justify-center"
-        style={{ background: "var(--viewer-bg)" }}
+        className="flex-1 overflow-auto overscroll-contain rounded-2xl p-6 flex justify-center border"
+        style={{ background: "var(--viewer-bg)", borderColor: "var(--border-subtle)" }}
       >
         <div
           style={{

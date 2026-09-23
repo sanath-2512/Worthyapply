@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ResumeData } from "@/lib/resume-types";
 import { extractResumeStream, ApiError, PipelineEvent } from "@/lib/api";
 import { Icon } from "../ui/Icon";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { AppHeader } from "../ui/AppHeader";
+import { BackButton } from "../ui/BackButton";
+import { Dropzone } from "../ui/Dropzone";
+import { Button } from "../ui/Button";
+import { StreamConsole } from "../ui/StreamConsole";
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 interface Props {
   onImported: (data: Partial<ResumeData>) => void;
@@ -17,12 +23,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export function ResumeImport({ onImported, onBack }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
   const [statusMsg, setStatusMsg] = useState("Reading your resume...");
   const [liveText, setLiveText] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -42,13 +46,6 @@ export function ResumeImport({ onImported, onBack }: Props) {
     if (err) { setError(err); setFile(null); }
     else { setError(""); setFile(f); }
   }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  }, [handleFile]);
 
   const handleEvent = (event: PipelineEvent) => {
     switch (event.type) {
@@ -89,117 +86,104 @@ export function ResumeImport({ onImported, onBack }: Props) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="px-4 md:px-8 py-4 border-b flex items-center justify-between" style={{ borderColor: "var(--border-subtle)" }}>
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--text)" }}>WorthyApply</Link>
-          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>/ Resume Builder / Import</span>
-        </div>
-        <ThemeToggle />
-      </header>
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-[520px] grid-bg opacity-60 pointer-events-none" aria-hidden="true" />
+      <AppHeader
+        back={!processing ? <BackButton label="Back" canGoBack={false} onFallback={onBack} /> : undefined}
+        crumb={<>Resume Builder <span style={{ color: "var(--border-strong)" }}>/</span> Import</>}
+        right={<ThemeToggle />}
+      />
 
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <main id="main" tabIndex={-1} className="relative flex-1 flex items-center justify-center px-[var(--gutter)] py-12 sm:py-16 outline-none">
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
             {!processing ? (
               <motion.div
                 key="upload"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.6, ease: EASE }}
               >
-                <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[11px] mb-6 transition-opacity hover:opacity-70" style={{ color: "var(--text-muted)" }}>
-                  <Icon name="arrow-left" size={13} /> Back
-                </button>
-                <h1 className="text-2xl font-bold tracking-tight mb-1" style={{ color: "var(--text)" }}>
+                <p className="eyebrow mb-3">
+                  <span className="w-4 h-px" style={{ background: "currentColor" }} aria-hidden="true" />
+                  Import
+                </p>
+                <h1 className="display-md" style={{ color: "var(--text)" }}>
                   Upload your resume
                 </h1>
-                <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[15px] mt-3 mb-8 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   We&apos;ll read it and fill in the builder automatically. You can review and edit everything afterward.
                 </p>
 
-                {error && (
-                  <div className="mb-4 p-3 rounded-lg border text-sm" style={{ background: "var(--red-dim)", borderColor: "var(--red-glow)", color: "var(--red)" }}>
-                    {error}
+                {error && file !== null && (
+                  <div role="alert" className="mb-5 p-4 rounded-2xl border flex items-start gap-3" style={{ background: "var(--red-dim)", borderColor: "var(--red-glow)" }}>
+                    <span className="mt-0.5 shrink-0" style={{ color: "var(--red)" }}><Icon name="alert" size={16} /></span>
+                    <div>
+                      <p className="text-[14px] font-medium" style={{ color: "var(--text)" }}>Import didn&apos;t finish</p>
+                      <p className="text-[13px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{error}</p>
+                    </div>
                   </div>
                 )}
 
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => inputRef.current?.click()}
-                  role="button" tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
-                  aria-label="Upload resume PDF"
-                  className="border-2 border-dashed rounded-2xl p-8 cursor-pointer transition-all duration-200 text-center"
-                  style={{
-                    borderColor: dragOver ? "var(--accent)" : error ? "var(--red)" : "var(--border)",
-                    background: dragOver ? "var(--accent-dim)" : "var(--surface)",
-                  }}
-                >
-                  <input ref={inputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-                  {file ? (
-                    <div>
-                      <div className="text-sm font-medium mb-1" style={{ color: "var(--text)" }}>{file.name}</div>
-                      <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>{(file.size / 1024).toFixed(0)} KB · Click to replace</div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>Drop your resume here or click to browse</div>
-                      <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>PDF · Max 10 MB</div>
-                    </div>
-                  )}
-                </div>
+                <Dropzone
+                  id="import-drop"
+                  file={file}
+                  // Validation errors (no file kept) show under the drop target;
+                  // server errors (file kept) show in the banner above.
+                  error={file === null ? error : undefined}
+                  onFile={handleFile}
+                  onClear={() => { setFile(null); setError(""); }}
+                />
 
-                <button
-                  onClick={handleImport}
-                  disabled={!file}
-                  className="btn btn-primary btn-lg magnetic-btn w-full mt-6"
-                >
-                  Import Resume
-                  <Icon name="arrow-right" size={17} />
-                </button>
+                <Button size="lg" fullWidth className="mt-6" onClick={handleImport} disabled={!file} iconRight="arrow-right">
+                  {error && file ? "Try again" : "Import Resume"}
+                </Button>
+                <p className="mt-3 text-[12px] text-center" style={{ color: "var(--text-muted)" }}>
+                  Text-based PDFs work best. Nothing is changed until you review it.
+                </p>
               </motion.div>
             ) : (
               <motion.div
                 key="processing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: EASE }}
                 className="text-center"
               >
-                <motion.div
-                  className="mx-auto mb-8 w-14 h-14 rounded-full border-2"
-                  style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                />
-                <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
+                <div className="relative mx-auto mb-8 w-[132px]" aria-hidden="true">
+                  <div className="rounded-lg p-3 space-y-1.5 text-left" style={{ background: "#fff", aspectRatio: "210 / 297", boxShadow: "var(--viewer-shadow)" }}>
+                    <div className="skeleton h-2 w-2/3 !bg-[#e6e6ec]" />
+                    <div className="skeleton h-1 w-5/6 !bg-[#f0f0f4]" />
+                    {[0, 1, 2].map((k) => (
+                      <div key={k} className="space-y-1 pt-1.5">
+                        <div className="skeleton h-1.5 w-1/3 !bg-[#e4e4ea]" />
+                        <div className="skeleton h-1 w-full !bg-[#f0f0f4]" />
+                        <div className="skeleton h-1 w-11/12 !bg-[#f0f0f4]" />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Scan line */}
+                  <motion.div
+                    className="absolute inset-x-[-10px] h-8"
+                    style={{ background: "linear-gradient(180deg, transparent, var(--accent-glow), transparent)" }}
+                    animate={{ top: ["-10%", "90%", "-10%"] }}
+                    transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                </div>
+                <h2 className="heading" style={{ color: "var(--text)" }}>
                   Importing your resume
                 </h2>
-                <p className="text-[12px] mb-5" style={{ color: "var(--text-muted)" }} aria-live="polite">
+                <p className="text-[13.5px] mt-2 mb-6 inline-flex items-center gap-2" style={{ color: "var(--text-secondary)" }} aria-live="polite">
+                  <span className="spinner" style={{ width: 13, height: 13, color: "var(--accent-bright)" }} aria-hidden="true" />
                   {statusMsg}
                 </p>
-                {liveText && (
-                  <div
-                    className="mx-auto max-w-md text-left rounded-xl px-4 py-3 max-h-40 overflow-hidden text-[11px] leading-relaxed font-mono whitespace-pre-wrap break-words"
-                    style={{
-                      background: "var(--surface)",
-                      color: "var(--text-muted)",
-                      border: "1px solid var(--border-subtle)",
-                    }}
-                    aria-live="polite"
-                  >
-                    {/* Show the streaming tail so the box stays anchored. */}
-                    {liveText.slice(-600)}
-                    <span className="inline-block w-1.5 h-3 ml-0.5 align-middle animate-pulse" style={{ background: "var(--accent)" }} />
-                  </div>
-                )}
+                <StreamConsole text={liveText} label="parsing" tail={600} className="text-left" />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

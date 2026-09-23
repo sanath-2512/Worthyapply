@@ -26,9 +26,11 @@ interface Props {
    */
   canGoBack?: boolean;
   className?: string;
+  /** Hide the text label below the sm breakpoint (icon stays, label stays for AT). */
+  compact?: boolean;
 }
 
-export function BackButton({ label = "Back", onFallback, canGoBack = true, className = "" }: Props) {
+export function BackButton({ label = "Back", onFallback, canGoBack = true, className = "", compact = true }: Props) {
   const handle = () => {
     if (canGoBack && typeof window !== "undefined" && window.history.length > 1) {
       window.history.back();
@@ -42,11 +44,13 @@ export function BackButton({ label = "Back", onFallback, canGoBack = true, class
       type="button"
       onClick={handle}
       aria-label={label}
-      className={`inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-100 opacity-80 ${className}`}
+      className={`group inline-flex items-center gap-1.5 h-9 pl-2 pr-2.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-[var(--surface-elevated)] ${className}`}
       style={{ color: "var(--text-secondary)" }}
     >
-      <Icon name="arrow-left" size={15} />
-      <span>{label}</span>
+      <span className="inline-flex transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-x-0.5">
+        <Icon name="arrow-left" size={16} />
+      </span>
+      <span className={compact ? "hidden sm:inline" : ""}>{label}</span>
     </button>
   );
 }

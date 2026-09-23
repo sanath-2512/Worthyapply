@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { AnalysisResponse } from "@/lib/types";
 import { analyzeApplicationStream, ApiError, AgentId, PipelineEvent } from "@/lib/api";
 import { Landing } from "@/components/Landing";
 import { Workspace } from "@/components/Workspace";
 import { Processing, INITIAL_AGENTS, AgentUiState } from "@/components/Processing";
 import { Results } from "@/components/Results";
+import { SmoothScroll, useSmoothScroll } from "@/components/providers/SmoothScroll";
+import { ScrollTrigger } from "@/lib/motion";
 
 type View = "landing" | "workspace" | "processing" | "results";
 type LiveText = Partial<Record<string, string>>;
@@ -23,6 +25,9 @@ function viewFromHash(hash: string): View {
 // the user back to the start. Uses localStorage so it survives reloads (and tab
 // close). The typed JD draft is persisted separately by the Workspace component.
 const SESSION_KEY = "worthyapply_session_v1";
+// Where the user was reading on Results, so returning from the builder (a
+// separate route, which remounts this page) lands them back in place.
+const RESULTS_SCROLL_KEY = "worthyapply_results_scroll_v1";
 const JD_DRAFT_KEY = "worthyapply_jd_draft_v1";
 
 // The backend runs all three analysis phases in ONE call and reports them under
@@ -66,7 +71,32 @@ function clearSession() {
   }
 }
 
+// View transitions: a short blur-through cross-fade. Exits are quicker than
+// entrances so the next screen never feels like it is waiting on the last.
+const EASE = [0.16, 1, 0.3, 1] as const;
+const viewVariants: Variants = {
+  initial: { opacity: 0, y: 14, filter: "blur(6px)" },
+  // transitionEnd clears filter/transform: left on the wrapper they would
+  // become a containing block and break position:fixed and ScrollTrigger pins.
+  enter: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.55, ease: EASE },
+    transitionEnd: { filter: "none", transform: "none" },
+  },
+  exit: { opacity: 0, y: -8, filter: "blur(6px)", transition: { duration: 0.28, ease: EASE } },
+};
+
 export default function Home() {
+  return (
+    <SmoothScroll>
+      <HomeFlow />
+    </SmoothScroll>
+  );
+}
+
+function HomeFlow() {
   // Start with SSR-safe defaults; restore from storage on mount (client only) to
   // avoid hydration mismatches from reading localStorage during render.
   const [view, setView] = useState<View>("landing");
@@ -80,9 +110,25 @@ export default function Home() {
   // asking the user to upload the resume or paste the JD again.
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
+  // After "New" the workspace starts empty; after an error, cancel or Back it
+  // is prefilled with the resume the user already chose.
+  const [freshWorkspace, setFreshWorkspace] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   // Latest results, readable synchronously inside the popstate handler.
   const resultsRef = useRef<AnalysisResponse | null>(null);
+  // Scroll bookkeeping (presentation only): each new screen starts at the top,
+  // except Results reached via browser Back/Forward, which returns to where the
+  // user was reading.
+  const { scrollTo } = useSmoothScroll();
+  const viewRef = useRef<View>("landing");
+  const resultsScrollRef = useRef(0);
+  const restoreResultsScrollRef = useRef(false);
+  // False until the mount effect has resolved the real starting view. Until
+  // then the rendered landing is only the server placeholder, and must not play
+  // an exit animation if the effect immediately replaces it (e.g. returning to
+  // #results): an exit racing the browser's scroll restoration can stall.
+  const [booted, setBooted] = useState(false);
+  const restoreFromBootRef = useRef(false);
 
   /**
    * Navigate to a view AND keep browser history in sync.
@@ -93,12 +139,20 @@ export default function Home() {
    * hash + History API so browser Back/Forward and reload behave predictably.
    */
   const navigate = (next: View, opts: { replace?: boolean } = {}) => {
+    rememberScroll();
+    restoreResultsScrollRef.current = false;
     setView(next);
     if (typeof window === "undefined") return;
     const url = next === "landing" ? window.location.pathname : `#${next}`;
     if (opts.replace) window.history.replaceState({ view: next }, "", url);
     else window.history.pushState({ view: next }, "", url);
   };
+
+  function rememberScroll() {
+    if (viewRef.current !== "results") return;
+    resultsScrollRef.current = window.scrollY;
+    try { sessionStorage.setItem(RESULTS_SCROLL_KEY, String(window.scrollY)); } catch {}
+  }
 
   // Mount-only (client): restore persisted session + reload-adjusted view, set the
   // base history entry, and restore the view on browser Back/Forward.
@@ -121,7 +175,14 @@ export default function Home() {
     } else {
       start = fromHash; // landing or workspace
     }
+    if (start === "results") {
+      try {
+        resultsScrollRef.current = Number(sessionStorage.getItem(RESULTS_SCROLL_KEY)) || 0;
+      } catch {}
+      restoreFromBootRef.current = true;
+    }
     if (start !== "landing") setView(start);
+    setBooted(true);
     window.history.replaceState(
       { view: start },
       "",
@@ -135,6 +196,8 @@ export default function Home() {
         setView("workspace");
         return;
       }
+      rememberScroll();
+      restoreResultsScrollRef.current = target === "results";
       // Never restore the transient processing screen via Back/Forward.
       setView(target === "processing" ? "workspace" : target);
     };
@@ -145,6 +208,67 @@ export default function Home() {
   useEffect(() => {
     resultsRef.current = results;
   }, [results]);
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  // Keep the Results reading position current. Leaving the route (Open Editor
+  // → /builder) unmounts this page after Next has already reset the scroll, so
+  // it has to be recorded while the user reads, not on the way out (a trailing
+  // scroll event from that reset is why the debounced save is never flushed).
+  useEffect(() => {
+    if (view !== "results") return;
+    const save = () => {
+      try { sessionStorage.setItem(RESULTS_SCROLL_KEY, String(window.scrollY)); } catch {}
+    };
+    let t = 0;
+    const onScroll = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(save, 150);
+    };
+    // Leaving for the builder always starts with a click or key press; record
+    // the position right then, before the route change resets the scroll.
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pointerdown", save, true);
+    window.addEventListener("keydown", save, true);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pointerdown", save, true);
+      window.removeEventListener("keydown", save, true);
+    };
+  }, [view]);
+
+  // Restoring straight into Results on mount: no view exit runs, so place the
+  // scroll once the results have laid out.
+  useEffect(() => {
+    if (!booted || view !== "results" || !restoreFromBootRef.current) return;
+    restoreFromBootRef.current = false;
+    const y = resultsScrollRef.current;
+    // Re-measure triggers first: refresh() restores the scroll it recorded,
+    // which would undo a jump made before it.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      ScrollTrigger.refresh();
+      raf2 = requestAnimationFrame(() => scrollTo(y, { immediate: true }));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [booted, view, scrollTo]);
+
+  // Runs between the old screen leaving and the new one mounting, so the
+  // jump is never visible. Triggers are re-measured once the new view is laid out.
+  const handleExitComplete = () => {
+    // The boot-time swap is placed by the effect above instead.
+    if (restoreFromBootRef.current) return;
+    const y = restoreResultsScrollRef.current ? resultsScrollRef.current : 0;
+    scrollTo(y, { immediate: true });
+    restoreResultsScrollRef.current = false;
+    requestAnimationFrame(() => ScrollTrigger.refresh());
+  };
 
   const handleGetStarted = () => navigate("workspace");
 
@@ -221,6 +345,7 @@ export default function Home() {
   };
 
   const handleAnalyze = async (file: File, jd: string) => {
+    setFreshWorkspace(false);
     setError("");
     resetAgents();
     setResumeFile(file);
@@ -265,6 +390,7 @@ export default function Home() {
   // Results "New" — explicit fresh start (distinct from Back).
   const handleReset = () => {
     abortRef.current?.abort();
+    setFreshWorkspace(true);
     setResults(null);
     clearSession();
     resetAgents();
@@ -277,28 +403,17 @@ export default function Home() {
   const handleBackToWorkspace = () => navigate("workspace");
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
       {view === "landing" && (
-        <motion.div
-          key="landing"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.4 }}
-        >
+        <motion.div key="landing" variants={viewVariants} initial="initial" animate="enter" exit={booted ? "exit" : undefined}>
           <Landing onGetStarted={handleGetStarted} />
         </motion.div>
       )}
 
       {view === "workspace" && (
-        <motion.div
-          key="workspace"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.4 }}
-        >
+        <motion.div key="workspace" variants={viewVariants} initial="initial" animate="enter" exit="exit">
           <Workspace
+            initialFile={freshWorkspace ? null : resumeFile}
             onAnalyze={handleAnalyze}
             error={error}
             onClearError={() => setError("")}
@@ -308,13 +423,7 @@ export default function Home() {
       )}
 
       {view === "processing" && (
-        <motion.div
-          key="processing"
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div key="processing" variants={viewVariants} initial="initial" animate="enter" exit="exit">
           <Processing
             agents={agents}
             liveText={liveText}
@@ -325,12 +434,7 @@ export default function Home() {
       )}
 
       {view === "results" && results && (
-        <motion.div
-          key="results"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div key="results" variants={viewVariants} initial="initial" animate="enter" exit="exit">
           <Results
             data={results}
             onReset={handleReset}

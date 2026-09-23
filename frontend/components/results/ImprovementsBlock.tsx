@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { BulletImprovement } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 import { Icon } from "../ui/Icon";
+import { Button } from "../ui/Button";
+import { SectionHeading } from "../ui/SectionHeading";
+import { Spotlight } from "../motion/Spotlight";
+import { EmptyNote, Label } from "./shared";
 
 interface Props {
   assessment: string;
@@ -19,43 +24,37 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
 
   return (
     <div>
-      <div className="mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1" style={{ color: "var(--text)" }}>
-          What to change
-        </h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Truthful improvements grounded in your experience
-        </p>
-      </div>
+      <SectionHeading eyebrow="Optimization" title="What to change" sub="Truthful improvements, grounded in your actual experience." className="mb-10" />
 
       <div className="space-y-12">
         {/* Assessment */}
-        <div
-          className="p-6 rounded-2xl border"
-          style={{ background: "var(--surface)", borderColor: "var(--border-subtle)" }}
-        >
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        <figure className="relative card p-6 sm:p-7 overflow-hidden">
+          <span className="absolute left-0 top-6 bottom-6 w-[3px] rounded-r" style={{ background: "linear-gradient(var(--accent), var(--accent-2))" }} aria-hidden="true" />
+          <figcaption className="text-[11px] font-mono uppercase tracking-[0.14em] mb-2" style={{ color: "var(--text-muted)" }}>
+            Overall assessment
+          </figcaption>
+          <p className="text-[15px] leading-relaxed" style={{ color: "var(--text)" }}>
             {assessment}
           </p>
-        </div>
+        </figure>
 
         {/* Priorities */}
         <div>
-          <Label>Priority Actions</Label>
+          <Label>Priority actions</Label>
           {priorities.length > 0 ? (
-            <div className="space-y-3">
+            <ol className="grid sm:grid-cols-2 gap-3">
               {priorities.map((p, i) => (
-                <div key={i} className="flex items-start gap-3">
+                <li key={i} className="card p-4 flex items-start gap-3">
                   <span
-                    className="shrink-0 w-6 h-6 flex items-center justify-center text-[10px] font-bold rounded-full"
-                    style={{ background: "var(--accent-dim)", color: "var(--accent-bright)", fontFamily: "'JetBrains Mono', monospace" }}
+                    className="shrink-0 w-7 h-7 flex items-center justify-center text-[12px] font-mono rounded-lg"
+                    style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}
                   >
                     {i + 1}
                   </span>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{p}</p>
-                </div>
+                  <p className="text-[14px] leading-relaxed pt-0.5" style={{ color: "var(--text-secondary)" }}>{p}</p>
+                </li>
               ))}
-            </div>
+            </ol>
           ) : (
             <EmptyNote>
               No priority rewrites were flagged for this role — your resume already
@@ -68,19 +67,36 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
         {/* Bullet Improvements */}
         {bullets.length > 0 && (
           <div>
-            <Label>Resume Bullet Transformations</Label>
-            <div className="space-y-5">
-              {visible.map((b, i) => (
-                <BulletCard key={i} bullet={b} />
-              ))}
+            <div className="flex items-center justify-between">
+              <Label>Resume bullet transformations</Label>
+              <span className="text-[11px] font-mono mb-3" style={{ color: "var(--text-muted)" }}>{bullets.length}</span>
             </div>
-            {bullets.length > 3 && !showAll && (
+            <div className="space-y-4">
+              <AnimatePresence initial={false}>
+                {visible.map((b, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: i >= 3 ? (i - 3) * 0.06 : 0 }}
+                  >
+                    <BulletCard bullet={b} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            {bullets.length > 3 && (
               <button
-                onClick={() => setShowAll(true)}
-                className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-medium"
+                onClick={() => setShowAll((s) => !s)}
+                className="mt-5 inline-flex items-center gap-1.5 text-[12.5px] font-medium"
                 style={{ color: "var(--accent-bright)" }}
+                aria-expanded={showAll}
               >
-                View all {bullets.length} improvements <Icon name="arrow-right" size={13} />
+                {showAll ? "Show fewer" : `View all ${bullets.length} improvements`}
+                <span className="inline-flex transition-transform duration-300" style={{ transform: showAll ? "rotate(180deg)" : "none" }}>
+                  <Icon name="chevron-down" size={14} />
+                </span>
               </button>
             )}
           </div>
@@ -88,16 +104,12 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
 
         {/* Keywords */}
         <div>
-          <Label>Keywords to Include</Label>
+          <Label>Keywords to include</Label>
           {keywords.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {keywords.map((k) => (
-                <span
-                  key={k}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg"
-                  style={{ background: "var(--green-dim)", color: "var(--green)" }}
-                >
-                  <Icon name="check" size={12} /> {k}
+                <span key={k} className="chip chip-match">
+                  <Icon name="check" size={11} strokeWidth={2.5} /> {k}
                 </span>
               ))}
             </div>
@@ -113,28 +125,25 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
         {/* Action prompt */}
         {onScrollToTailor && (
           <div
-            className="p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4"
-            style={{
-              background: "linear-gradient(135deg, var(--accent-dim) 0%, var(--surface) 100%)",
-              borderColor: "var(--accent-glow)",
-            }}
+            className="relative p-5 sm:p-6 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 overflow-hidden"
+            style={{ background: "linear-gradient(120deg, var(--accent-dim) 0%, var(--surface) 70%)", borderColor: "var(--accent-glow)" }}
           >
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                Ready to apply these optimizations?
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                Generate a tailored resume version incorporating these targeted bullets and keywords.
-              </p>
+            <div className="flex items-start gap-3.5">
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>
+                <Icon name="sparkle" size={16} />
+              </span>
+              <div>
+                <p className="text-[15px] font-semibold" style={{ color: "var(--text)" }}>
+                  Ready to apply these optimizations?
+                </p>
+                <p className="text-[13px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                  Generate a tailored resume incorporating these targeted bullets and keywords.
+                </p>
+              </div>
             </div>
-            <button
-              onClick={onScrollToTailor}
-              className="btn btn-primary btn-sm magnetic-btn shrink-0"
-            >
-              <Icon name="sparkle" size={14} />
-              <span>Tailor Resume</span>
-              <Icon name="arrow-right" size={14} />
-            </button>
+            <Button size="sm" onClick={onScrollToTailor} iconLeft="sparkle" iconRight="arrow-right" className="shrink-0">
+              Tailor Resume
+            </Button>
           </div>
         )}
       </div>
@@ -144,58 +153,37 @@ export function ImprovementsBlock({ assessment, priorities, bullets, keywords, o
 
 function BulletCard({ bullet }: { bullet: BulletImprovement }) {
   return (
-    <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ borderColor: "var(--border-subtle)", background: "var(--surface)" }}
-    >
+    <Spotlight className="card overflow-hidden grid md:grid-cols-2">
       {/* Before */}
-      <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border-subtle)" }}>
-        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-secondary)" }}>
+      <div className="p-5 border-b md:border-b-0 md:border-r" style={{ borderColor: "var(--border-subtle)" }}>
+        <span className="text-[10.5px] font-mono uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
           Before
         </span>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        <p className="text-[14px] mt-2 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
           {bullet.original}
         </p>
       </div>
 
       {/* After */}
-      <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border-subtle)", background: "var(--surface-elevated)" }}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--green)" }}>
-            After
+      <div className="p-5" style={{ background: "color-mix(in srgb, var(--green) 5%, transparent)" }}>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <span className="text-[10.5px] font-mono uppercase tracking-[0.14em] inline-flex items-center gap-1.5" style={{ color: "var(--green)" }}>
+            <Icon name="arrow-right" size={11} /> After
           </span>
           <CopyButton text={bullet.improved} />
         </div>
-        <p className="text-sm font-medium leading-relaxed" style={{ color: "var(--text)" }}>
+        <p className="text-[14px] font-medium leading-relaxed" style={{ color: "var(--text)" }}>
           {bullet.improved}
         </p>
       </div>
 
       {/* Why */}
-      <div className="px-5 py-3">
-        <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-          <span className="font-semibold">Why:</span> {bullet.reason}
+      <div className="md:col-span-2 px-5 py-3 border-t flex items-start gap-2" style={{ borderColor: "var(--border-subtle)" }}>
+        <span className="mt-0.5 shrink-0" style={{ color: "var(--accent-bright)" }}><Icon name="sparkle" size={12} /></span>
+        <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+          <span className="font-medium" style={{ color: "var(--text-secondary)" }}>Why:</span> {bullet.reason}
         </p>
       </div>
-    </div>
-  );
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: "var(--text-muted)" }}>
-      {children}
-    </h3>
-  );
-}
-
-function EmptyNote({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="text-[13px] leading-relaxed rounded-xl border border-dashed px-4 py-3.5"
-      style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-    >
-      {children}
-    </p>
+    </Spotlight>
   );
 }

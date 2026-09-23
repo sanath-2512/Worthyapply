@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AnalysisResponse } from "@/lib/types";
+import { gsap, useGsap } from "@/lib/motion";
 import { OverviewHero } from "./results/OverviewHero";
 import { SkillConstellation } from "./results/SkillConstellation";
 import { RequirementsBlock } from "./results/RequirementsBlock";
@@ -11,10 +12,12 @@ import { ImprovementsBlock } from "./results/ImprovementsBlock";
 import { DetailsBlock } from "./results/DetailsBlock";
 import { ApplicationBrief } from "./results/ApplicationBrief";
 import { TailoredResumeAction } from "./results/TailoredResumeAction";
-import { Reveal } from "./results/Reveal";
-import { Icon } from "./ui/Icon";
+import { Reveal } from "./motion/Reveal";
 import { BackButton } from "./ui/BackButton";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import { Button } from "./ui/Button";
+import { Logo } from "./ui/Logo";
+import { useSmoothScroll } from "./providers/SmoothScroll";
 
 interface Props {
   data: AnalysisResponse;
@@ -36,6 +39,9 @@ const nav = [
 export function Results({ data, onReset, onBack, resumeFile = null, jobDescription = "" }: Props) {
   const [active, setActive] = useState("overview");
   const obsRef = useRef<IntersectionObserver | null>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const mobileTabsRef = useRef<HTMLDivElement>(null);
+  const { scrollTo: smoothScrollTo } = useSmoothScroll();
 
   useEffect(() => {
     const els = nav.map((n) => document.getElementById(n.id)).filter(Boolean) as HTMLElement[];
@@ -49,53 +55,79 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
     return () => obsRef.current?.disconnect();
   }, []);
 
+  // Keep the active mobile tab visible in its scroll strip.
+  useEffect(() => {
+    const strip = mobileTabsRef.current;
+    const tab = strip?.querySelector<HTMLElement>(`[data-tab="${active}"]`);
+    if (strip && tab) {
+      strip.scrollTo({ left: tab.offsetLeft - strip.clientWidth / 2 + tab.clientWidth / 2, behavior: "smooth" });
+    }
+  }, [active]);
+
+  // Reading progress along the top edge of the header.
+  useGsap(
+    ({ reduced, scope }) => {
+      const bar = scope.querySelector("[data-progress]");
+      if (!bar) return;
+      gsap.fromTo(
+        bar,
+        { scaleX: 0 },
+        { scaleX: 1, ease: "none", scrollTrigger: { trigger: document.documentElement, start: "top top", end: "bottom bottom", scrub: reduced ? true : 0.3 } }
+      );
+    },
+    [],
+    headerRef
+  );
+
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    // Clear the sticky header (and the mobile tab row) when jumping to a section.
+    const offset = -((headerRef.current?.offsetHeight ?? 64) + 12);
+    smoothScrollTo(id, { offset });
   };
+
+  const { job_analysis: ja, match_analysis: ma } = data;
 
   return (
     <div className="min-h-screen relative">
-      <div
-        className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full blur-[150px] opacity-[0.03] pointer-events-none"
-        style={{ background: "var(--accent)" }}
-      />
+      <div className="absolute inset-x-0 top-0 h-[640px] grid-bg opacity-50 pointer-events-none" aria-hidden="true" />
 
-      {/* Sticky nav */}
-      <nav
-        className="sticky top-0 z-50 border-b backdrop-blur-2xl"
-        style={{ background: "var(--nav-bg)", borderColor: "var(--border-subtle)" }}
+      {/* Sticky header */}
+      <div
+        ref={headerRef}
+        className="sticky top-0 z-50 border-b print:hidden"
+        style={{
+          background: "var(--nav-bg)",
+          borderColor: "var(--border-subtle)",
+          backdropFilter: "blur(20px) saturate(150%)",
+          WebkitBackdropFilter: "blur(20px) saturate(150%)",
+        }}
       >
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 md:gap-4">
-            {onBack && <BackButton label="Back" onFallback={onBack} className="!text-[11px]" />}
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--text)" }}>
-              WorthyApply
+        <nav aria-label="Results" className="max-w-[1200px] mx-auto px-[var(--gutter)] h-[var(--header-h)] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+            {onBack && <BackButton label="Back" onFallback={onBack} />}
+            <span className="hidden sm:block w-px h-5 mx-1" style={{ background: "var(--border)" }} aria-hidden="true" />
+            <span className="hidden sm:inline-flex"><Logo size={26} showWordmark={false} /></span>
+            <span className="hidden md:inline lg:hidden xl:inline text-[13px] truncate max-w-[200px] xl:max-w-[220px] ml-1" style={{ color: "var(--text-secondary)" }} title={ja.job_title}>
+              {ja.job_title}
             </span>
-            <button
-              onClick={onReset}
-              className="text-[10px] font-medium transition-opacity hover:opacity-60"
-              style={{ color: "var(--text-muted)" }}
-              aria-label="Start a new analysis"
-            >
-              <span className="inline-flex items-center gap-1"><Icon name="refresh" size={12} /> New</span>
-            </button>
           </div>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-0.5 p-1 rounded-xl" style={{ background: "var(--surface)" }}>
+          {/* Desktop section tabs */}
+          <div className="hidden lg:flex items-center gap-0.5 p-1 rounded-xl" style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
             {nav.map((n) => (
               <button
                 key={n.id}
                 onClick={() => scrollTo(n.id)}
-                className="relative px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all duration-200"
+                aria-current={active === n.id ? "true" : undefined}
+                className="relative px-3 h-8 text-[12.5px] font-medium rounded-lg transition-colors duration-200 whitespace-nowrap"
                 style={{ color: active === n.id ? "var(--text)" : "var(--text-muted)" }}
               >
                 {active === n.id && (
                   <motion.div
                     layoutId="activeNav"
                     className="absolute inset-0 rounded-lg"
-                    style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
+                    transition={{ type: "spring", stiffness: 500, damping: 38 }}
                   />
                 )}
                 <span className="relative z-10">{n.label}</span>
@@ -103,94 +135,109 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
             ))}
           </div>
 
-          {/* Quick Tailor CTA + Theme + Mobile Nav */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <Button variant="ghost" size="sm" iconLeft="refresh" onClick={onReset} aria-label="Start a new analysis">
+              <span className="hidden sm:inline">New</span>
+            </Button>
             <ThemeToggle />
-            <button
-              onClick={() => scrollTo("tailor")}
-              className="magnetic-btn px-3.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all duration-200 hover:brightness-110 active:scale-95"
-              style={{
-                background: "var(--accent)",
-                color: "#fff",
-                boxShadow: "var(--shadow-accent)",
-              }}
-            >
-              <Icon name="sparkle" size={13} />
+            <Button size="sm" iconLeft="sparkle" onClick={() => scrollTo("tailor")}>
               <span className="hidden sm:inline">Tailor Resume</span>
               <span className="sm:hidden">Tailor</span>
-            </button>
+            </Button>
+          </div>
+        </nav>
 
-            {/* Mobile dropdown */}
-            <div className="md:hidden">
-              <select
-                value={active}
-                onChange={(e) => scrollTo(e.target.value)}
-                className="text-[11px] rounded-lg px-2 py-1.5 border appearance-none"
-                style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}
-                aria-label="Navigate"
+        {/* Mobile section tabs */}
+        <div
+          ref={mobileTabsRef}
+          className="lg:hidden overflow-x-auto no-scrollbar fade-x"
+          role="navigation"
+          aria-label="Jump to section"
+        >
+          <div className="flex items-center gap-1 px-[var(--gutter)] pb-2.5 w-max">
+            {nav.map((n) => (
+              <button
+                key={n.id}
+                data-tab={n.id}
+                onClick={() => scrollTo(n.id)}
+                aria-current={active === n.id ? "true" : undefined}
+                className="relative h-8 px-3 rounded-full text-[12.5px] font-medium whitespace-nowrap transition-colors"
+                style={{ color: active === n.id ? "var(--text)" : "var(--text-muted)" }}
               >
-                {nav.map((n) => (<option key={n.id} value={n.id}>{n.label}</option>))}
-              </select>
-            </div>
+                {active === n.id && (
+                  <motion.span
+                    layoutId="activeNavMobile"
+                    className="absolute inset-0 rounded-full"
+                    style={{ background: "var(--surface-elevated)", border: "1px solid var(--border)" }}
+                    transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                  />
+                )}
+                <span className="relative z-10">{n.label}</span>
+              </button>
+            ))}
           </div>
         </div>
-      </nav>
+
+        <div className="absolute left-0 right-0 -bottom-px h-px overflow-hidden" aria-hidden="true">
+          <div data-progress className="h-full origin-left" style={{ background: "linear-gradient(90deg, var(--accent), var(--accent-2))", transform: "scaleX(0)" }} />
+        </div>
+      </div>
 
       {/* Sections */}
-      <main id="main" tabIndex={-1} className="max-w-4xl mx-auto px-4 md:px-8">
+      <main id="main" tabIndex={-1} className="relative max-w-[1040px] mx-auto px-[var(--gutter)] outline-none">
         {/* Overview */}
-        <section id="overview" className="pt-20 pb-28">
+        <section id="overview" className="pt-12 sm:pt-16 pb-20 sm:pb-28" aria-label="Overview">
           <OverviewHero
-            jobTitle={data.job_analysis.job_title}
-            company={data.job_analysis.company}
-            experience={data.job_analysis.experience_required}
-            score={data.match_analysis.match_score}
-            recommendation={data.match_analysis.recommendation}
-            reason={data.match_analysis.recommendation_reason}
-            matched={data.match_analysis.matching_skills.length}
-            gaps={data.match_analysis.skill_gaps.length}
-            total={data.match_analysis.required_skills.length}
+            jobTitle={ja.job_title}
+            company={ja.company}
+            experience={ja.experience_required}
+            score={ma.match_score}
+            recommendation={ma.recommendation}
+            reason={ma.recommendation_reason}
+            matched={ma.matching_skills.length}
+            gaps={ma.skill_gaps.length}
+            total={ma.required_skills.length}
             onScrollToTailor={() => scrollTo("tailor")}
           />
         </section>
 
         {/* Skill Constellation */}
-        <section className="pb-28">
+        <section className="pb-20 sm:pb-28" aria-label="Skill map">
           <Reveal>
             <SkillConstellation
-              matching={data.match_analysis.matching_skills}
-              gaps={data.match_analysis.skill_gaps}
-              niceToHave={data.job_analysis.nice_to_have}
+              matching={ma.matching_skills}
+              gaps={ma.skill_gaps}
+              niceToHave={ja.nice_to_have}
             />
           </Reveal>
         </section>
 
         {/* Requirements */}
-        <section id="requirements" className="pb-28">
+        <section id="requirements" className="pb-20 sm:pb-28" aria-label="Role requirements">
           <Reveal>
             <RequirementsBlock
-              technical={data.job_analysis.technical_skills}
-              soft={data.job_analysis.soft_skills}
-              responsibilities={data.job_analysis.responsibilities}
-              keywords={data.job_analysis.keywords}
-              niceToHave={data.job_analysis.nice_to_have}
+              technical={ja.technical_skills}
+              soft={ja.soft_skills}
+              responsibilities={ja.responsibilities}
+              keywords={ja.keywords}
+              niceToHave={ja.nice_to_have}
             />
           </Reveal>
         </section>
 
         {/* Match */}
-        <section id="match" className="pb-28">
+        <section id="match" className="pb-20 sm:pb-28" aria-label="Your fit">
           <Reveal>
             <MatchBlock
-              required={data.match_analysis.required_skills}
-              matching={data.match_analysis.matching_skills}
-              gaps={data.match_analysis.skill_gaps}
+              required={ma.required_skills}
+              matching={ma.matching_skills}
+              gaps={ma.skill_gaps}
             />
           </Reveal>
         </section>
 
         {/* Improvements */}
-        <section id="improvements" className="pb-28">
+        <section id="improvements" className="pb-20 sm:pb-28" aria-label="Optimization">
           <Reveal>
             <ImprovementsBlock
               assessment={data.resume_optimization.overall_assessment}
@@ -203,7 +250,7 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
         </section>
 
         {/* Tailored Resume (Action & Live Workbench) */}
-        <section id="tailor" className="pb-28">
+        <section id="tailor" className="pb-20 sm:pb-28" aria-label="Tailor resume">
           <Reveal>
             <TailoredResumeAction
               data={data}
@@ -214,10 +261,10 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
         </section>
 
         {/* Details (expandable) */}
-        <section className="pb-28">
+        <section className="pb-20 sm:pb-28" aria-label="Full details">
           <Reveal>
             <DetailsBlock
-              summary={data.job_analysis.summary}
+              summary={ja.summary}
               missing={data.resume_optimization.missing_or_weak_requirements}
               warnings={data.resume_optimization.warnings}
             />
@@ -225,7 +272,7 @@ export function Results({ data, onReset, onBack, resumeFile = null, jobDescripti
         </section>
 
         {/* Application Brief */}
-        <section id="brief" className="pb-32">
+        <section id="brief" className="pb-28 sm:pb-36" aria-label="Application brief">
           <Reveal>
             <ApplicationBrief data={data} />
           </Reveal>

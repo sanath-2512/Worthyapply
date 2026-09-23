@@ -16,6 +16,9 @@ import { ResumeData, mergeExtracted, saveTailoredResume } from "@/lib/resume-typ
 import { useMounted } from "@/lib/use-mounted";
 import { ResumeDocument } from "@/components/resume/ResumeDocument";
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
+import { Tabs } from "@/components/ui/Tabs";
+import { StreamConsole } from "@/components/ui/StreamConsole";
 
 interface Props {
   data: AnalysisResponse;
@@ -140,364 +143,346 @@ export function TailoredResumeAction({ data, resumeFile, jobDescription }: Props
 
   const effectiveScale = previewScale * zoom;
 
+  const cancelTailoring = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setPhase("idle");
+  };
+
   return (
-    <div
-      className="rounded-2xl border p-6 md:p-8"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-    >
-      <div className="flex items-start justify-between gap-4 mb-1">
-        <div>
-          <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: "var(--text)" }}>
-            <span style={{ color: "var(--accent-bright)" }}><Icon name="sparkle" size={16} /></span> Generate Tailored Resume
-          </h3>
-          <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Apply the recommendations above to your existing resume. You&apos;ll review and
-            edit everything in the resume editor before exporting — nothing is final.
-          </p>
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {phase === "idle" && (
-          <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {!canRun && (
-              <p className="text-[11px] mt-3 mb-1" style={{ color: "var(--amber)" }}>
-                The original resume/JD from this session is needed to tailor. Start a new
-                analysis if this message persists.
-              </p>
-            )}
-            <button
-              onClick={handleGenerate}
-              disabled={!canRun}
-              className="btn btn-primary magnetic-btn mt-4"
-            >
+    <div className="card-elevated relative overflow-hidden">
+      <div
+        className="absolute -top-32 -right-32 w-80 h-80 rounded-full blur-3xl opacity-70 pointer-events-none"
+        style={{ background: "var(--accent-dim)" }}
+        aria-hidden="true"
+      />
+      <div className="relative p-6 sm:p-8">
+        <div className="flex items-start gap-4">
+          <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "var(--accent)", color: "#fff", boxShadow: "var(--shadow-accent)" }}>
+            <Icon name="sparkle" size={20} />
+          </span>
+          <div className="min-w-0">
+            <p className="eyebrow mb-1">Tailor</p>
+            <h2 className="heading" style={{ color: "var(--text)" }}>
               Generate Tailored Resume
-              <Icon name="arrow-right" size={16} />
-            </button>
-          </motion.div>
-        )}
+            </h2>
+            <p className="text-[14px] mt-2 leading-relaxed max-w-2xl" style={{ color: "var(--text-secondary)" }}>
+              Apply the recommendations above to your existing resume. You&apos;ll review and
+              edit everything in the resume editor before exporting — nothing is final.
+            </p>
+          </div>
+        </div>
 
-        {phase === "tailoring" && (
-          <motion.div key="tailoring" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-5">
-            <div className="flex items-center gap-3 mb-3">
-              <motion.div
-                className="w-4 h-4 rounded-full border-2"
-                style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              />
-              <span className="text-[12px]" style={{ color: "var(--text-secondary)" }} aria-live="polite">
-                {statusMsg}
-              </span>
-            </div>
-            {liveText && (
-              <div
-                className="rounded-xl px-4 py-3 max-h-40 overflow-hidden text-[11px] leading-relaxed font-mono whitespace-pre-wrap break-words"
-                style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border-subtle)" }}
-                aria-live="polite"
-              >
-                {liveText.slice(-600)}
-                <span className="inline-block w-1.5 h-3 ml-0.5 align-middle animate-pulse" style={{ background: "var(--accent)" }} />
-              </div>
-            )}
-          </motion.div>
-        )}
+        <AnimatePresence mode="wait">
+          {phase === "idle" && (
+            <motion.div key="idle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} className="mt-7">
+              <ul className="grid sm:grid-cols-3 gap-3 mb-7">
+                {[
+                  { icon: "zap" as const, t: "Rewrites bullets for this role" },
+                  { icon: "check" as const, t: "Adds the matching skills" },
+                  { icon: "pencil" as const, t: "Opens in the editor for review" },
+                ].map((r) => (
+                  <li key={r.t} className="flex items-center gap-2.5 p-3 rounded-xl text-[13px]" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+                    <span style={{ color: "var(--accent-bright)" }}><Icon name={r.icon} size={14} /></span>
+                    {r.t}
+                  </li>
+                ))}
+              </ul>
+              {!canRun && (
+                <p className="text-[12.5px] mb-4 flex items-start gap-2 p-3 rounded-xl" style={{ color: "var(--amber)", background: "var(--amber-dim)" }}>
+                  <span className="mt-0.5 shrink-0"><Icon name="alert" size={13} /></span>
+                  The original resume/JD from this session is needed to tailor. Start a new
+                  analysis if this message persists.
+                </p>
+              )}
+              <Button size="lg" magnetic onClick={handleGenerate} disabled={!canRun} iconLeft="sparkle" iconRight="arrow-right">
+                Generate Tailored Resume
+              </Button>
+            </motion.div>
+          )}
 
-        {phase === "done" && (
-          <motion.div key="done" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-6 space-y-6">
-            {/* Header & Main Actions */}
-            <div
-              className="rounded-2xl p-5 md:p-6 border"
-              style={{
-                background: "linear-gradient(135deg, var(--green-dim) 0%, var(--accent-dim) 100%)",
-                borderColor: "var(--green-glow)",
-              }}
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-2" style={{ background: "var(--green-dim)", color: "var(--green)" }}>
-                    <Icon name="check" size={13} />
-                    <span>Tailored Resume Ready</span>
+          {phase === "tailoring" && (
+            <motion.div key="tailoring" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} className="mt-7 grid md:grid-cols-[1fr_220px] gap-5 items-start">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="spinner" style={{ width: 16, height: 16, color: "var(--accent-bright)" }} aria-hidden="true" />
+                  <span className="text-[14px] font-medium" style={{ color: "var(--text)" }} aria-live="polite">
+                    {statusMsg}
+                  </span>
+                </div>
+                <StreamConsole text={liveText} label="tailoring" tail={600} maxHeight="10rem" />
+                {!liveText && (
+                  <div className="space-y-2.5 p-4 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)" }} aria-hidden="true">
+                    <div className="skeleton h-2.5 w-3/4" />
+                    <div className="skeleton h-2.5 w-full" />
+                    <div className="skeleton h-2.5 w-5/6" />
                   </div>
-                  <h4 className="text-lg font-bold" style={{ color: "var(--text)" }}>
-                    Customized for {data.job_analysis.job_title}
-                  </h4>
-                  <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                    {implementedCount} key optimization{implementedCount === 1 ? "" : "s"} applied directly to your experience & skills.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    onClick={handleDownloadPdf}
-                    className="btn btn-primary btn-sm magnetic-btn"
-                  >
-                    <Icon name="download" size={15} />
-                    <span>Download PDF</span>
-                  </button>
-
-                  <button
-                    onClick={goToEditor}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <Icon name="pencil" size={15} />
-                    <span>Open Editor</span>
-                    <Icon name="arrow-right" size={14} className="opacity-60" />
-                  </button>
-
-                  <button
-                    onClick={handleGenerate}
-                    className="btn btn-ghost btn-sm"
-                    title="Regenerate with fresh AI tailoring"
-                  >
-                    <Icon name="refresh" size={14} />
-                    Regenerate
-                  </button>
-                </div>
+                )}
+                <Button variant="ghost" size="sm" className="mt-4" onClick={cancelTailoring}>
+                  Cancel
+                </Button>
               </div>
-            </div>
+              {/* The document taking shape */}
+              <div className="hidden md:block rounded-lg p-4 space-y-2.5" style={{ background: "#fff", aspectRatio: "210 / 297", boxShadow: "var(--viewer-shadow)" }} aria-hidden="true">
+                <div className="skeleton h-3 w-2/3 !bg-[#e9e9ef]" />
+                <div className="skeleton h-1.5 w-5/6 !bg-[#f0f0f4]" />
+                {[0, 1, 2, 3].map((k) => (
+                  <div key={k} className="space-y-1.5 pt-2">
+                    <div className="skeleton h-2 w-1/3 !bg-[#e4e4ea]" />
+                    <div className="skeleton h-1.5 w-full !bg-[#f0f0f4]" />
+                    <div className="skeleton h-1.5 w-11/12 !bg-[#f0f0f4]" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
-            {/* Added Skills & Recommendations Notice Banner */}
-            <div
-              className="rounded-2xl p-5 md:p-6 border"
-              style={{
-                background: "linear-gradient(135deg, var(--accent-dim) 0%, var(--green-dim) 100%)",
-                borderColor: "var(--accent-glow)",
-              }}
-            >
-              <div className="flex items-start gap-3.5">
-                <span
-                  className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center mt-0.5"
-                  style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}
-                >
-                  <Icon name="sparkle" size={18} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold mb-1" style={{ color: "var(--text)" }}>
-                    Recommendations & Skills Added Directly
-                  </h4>
-                  <p className="text-[12px] leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>
-                    All recommendations and target skills for this job were added directly into your tailored resume.
-                    <span className="block mt-1 font-semibold" style={{ color: "var(--accent-bright)" }}>
-                      If you don&apos;t have any of these in your tech stack, you can easily remove or adjust them in the editor.
-                    </span>
-                  </p>
-                  {addedSkills.length > 0 && (
-                    <div className="space-y-1.5 mb-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                        Added Skills & Technologies:
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {addedSkills.map((s) => (
-                          <span
-                            key={s}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                            style={{
-                              background: "var(--surface)",
-                              color: "var(--text)",
-                              border: "1px solid var(--border)",
-                            }}
-                          >
-                            <Icon name="check" size={12} style={{ color: "var(--green)" }} /> {s}
-                          </span>
-                        ))}
-                      </div>
+          {phase === "done" && (
+            <motion.div key="done" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="mt-7 space-y-5">
+              {/* Header & Main Actions */}
+              <div
+                className="rounded-2xl p-5 sm:p-6 border"
+                style={{ background: "linear-gradient(120deg, var(--green-dim) 0%, var(--accent-dim) 100%)", borderColor: "var(--green-glow)" }}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[12px] font-semibold mb-2.5" style={{ background: "var(--green-dim)", color: "var(--green)" }}>
+                      <Icon name="check" size={12} strokeWidth={2.5} />
+                      <span>Tailored Resume Ready</span>
                     </div>
-                  )}
-                  <button onClick={goToEditor} className="btn btn-secondary btn-sm mt-1">
-                    <Icon name="pencil" size={14} />
-                    <span>Review / Remove in Editor</span>
-                  </button>
+                    <h3 className="text-lg font-semibold tracking-tight" style={{ color: "var(--text)" }}>
+                      Customized for {data.job_analysis.job_title}
+                    </h3>
+                    <p className="text-[13px] mt-1" style={{ color: "var(--text-secondary)" }}>
+                      {implementedCount} key optimization{implementedCount === 1 ? "" : "s"} applied directly to your experience &amp; skills.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                    <Button size="sm" onClick={handleDownloadPdf} iconLeft="download">
+                      Download PDF
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={goToEditor} iconLeft="pencil" iconRight="arrow-right">
+                      Open Editor
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleGenerate} iconLeft="refresh" title="Regenerate with fresh AI tailoring" className="col-span-2">
+                      Regenerate
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* View Selector Tabs */}
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--border-subtle)" }}>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setViewTab("preview")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    viewTab === "preview" ? "shadow-sm" : "opacity-70 hover:opacity-100"
-                  }`}
-                  style={{
-                    background: viewTab === "preview" ? "var(--surface-elevated)" : "transparent",
-                    color: viewTab === "preview" ? "var(--text)" : "var(--text-muted)",
-                    border: viewTab === "preview" ? "1px solid var(--border)" : "1px solid transparent",
-                  }}
-                >
-                  <span className="inline-flex items-center gap-1.5"><Icon name="document" size={14} /> Document Preview</span>
-                </button>
-                <button
-                  onClick={() => setViewTab("changes")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    viewTab === "changes" ? "shadow-sm" : "opacity-70 hover:opacity-100"
-                  }`}
-                  style={{
-                    background: viewTab === "changes" ? "var(--surface-elevated)" : "transparent",
-                    color: viewTab === "changes" ? "var(--text)" : "var(--text-muted)",
-                    border: viewTab === "changes" ? "1px solid var(--border)" : "1px solid transparent",
-                  }}
-                >
-                  <span className="inline-flex items-center gap-1.5"><Icon name="zap" size={14} /> Applied Changes ({implementedCount})</span>
-                </button>
+              {/* Added Skills & Recommendations Notice Banner */}
+              <div className="rounded-2xl p-5 sm:p-6 border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+                <div className="flex items-start gap-3.5">
+                  <span className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--accent-dim)", color: "var(--accent-bright)" }}>
+                    <Icon name="sparkle" size={17} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[14px] font-semibold mb-1" style={{ color: "var(--text)" }}>
+                      Recommendations &amp; skills added directly
+                    </h4>
+                    <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>
+                      All recommendations and target skills for this job were added directly into your tailored resume.{" "}
+                      <span className="font-medium" style={{ color: "var(--accent-bright)" }}>
+                        If you don&apos;t have any of these in your tech stack, you can easily remove or adjust them in the editor.
+                      </span>
+                    </p>
+                    {addedSkills.length > 0 && (
+                      <div className="mb-4">
+                        <span className="text-[11px] font-mono uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                          Added skills &amp; technologies
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {addedSkills.map((s) => (
+                            <span key={s} className="chip">
+                              <Icon name="check" size={11} strokeWidth={2.5} style={{ color: "var(--green)" }} /> {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Button variant="secondary" size="xs" onClick={goToEditor} iconLeft="pencil">
+                      Review / Remove in Editor
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              {viewTab === "preview" && (
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: "var(--surface)" }}>
+              {/* View Selector Tabs */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Tabs<ViewTab>
+                  label="Tailored resume view"
+                  size="sm"
+                  value={viewTab}
+                  onChange={setViewTab}
+                  panelIdPrefix="tailor-panel"
+                  items={[
+                    { id: "preview", label: "Document preview", icon: "document" },
+                    { id: "changes", label: `Applied changes (${implementedCount})`, icon: "zap" },
+                  ]}
+                />
+
+                {viewTab === "preview" && (
+                  <div className="flex items-center gap-0.5 rounded-lg p-0.5" style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
                     <button
                       onClick={() => setZoom((z) => Math.max(0.6, z - 0.1))}
-                      className="w-5 h-5 rounded flex items-center justify-center text-xs"
+                      className="icon-btn !min-w-8 !min-h-8 text-sm"
                       style={{ color: "var(--text-secondary)" }}
                       aria-label="Zoom out"
                     >
                       −
                     </button>
-                    <span className="text-[10px] tabular-nums w-8 text-center" style={{ color: "var(--text-muted)" }}>
+                    <span className="text-[11px] font-mono tabular w-11 text-center" style={{ color: "var(--text-muted)" }} aria-live="polite">
                       {Math.round(effectiveScale * 100)}%
                     </span>
                     <button
                       onClick={() => setZoom((z) => Math.min(1.5, z + 0.1))}
-                      className="w-5 h-5 rounded flex items-center justify-center text-xs"
+                      className="icon-btn !min-w-8 !min-h-8 text-sm"
                       style={{ color: "var(--text-secondary)" }}
                       aria-label="Zoom in"
                     >
                       +
                     </button>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Tab 1: Document Preview */}
-            {viewTab === "preview" && tailoredResume && (
-              <div
-                ref={previewContainerRef}
-                className="w-full rounded-2xl overflow-auto p-4 md:p-8 flex justify-center border"
-                style={{
-                  background: "var(--viewer-bg)",
-                  borderColor: "var(--border-subtle)",
-                  maxHeight: "700px",
-                }}
-              >
+              {/* Tab 1: Document Preview */}
+              {viewTab === "preview" && tailoredResume && (
                 <div
+                  ref={previewContainerRef}
+                  id="tailor-panel-preview"
+                  role="tabpanel"
+                  data-lenis-prevent
+                  className="w-full rounded-2xl overflow-auto p-4 md:p-8 flex justify-center border"
                   style={{
-                    width: A4_WIDTH_PX * effectiveScale,
-                    height: docHeight * effectiveScale,
+                    background: "var(--viewer-bg)",
+                    borderColor: "var(--border-subtle)",
+                    maxHeight: "700px",
                   }}
                 >
                   <div
-                    ref={previewDocRef}
                     style={{
-                      transform: `scale(${effectiveScale})`,
-                      transformOrigin: "top left",
-                      width: A4_WIDTH_PX,
-                      boxShadow: "var(--viewer-shadow)",
+                      width: A4_WIDTH_PX * effectiveScale,
+                      height: docHeight * effectiveScale,
                     }}
                   >
-                    <ResumeDocument data={tailoredResume} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 2: Changes List */}
-            {viewTab === "changes" && (
-              <div className="space-y-3">
-                {recommendations.length > 0 ? (
-                  recommendations.map((rec) => {
-                    const done = rec.status === "implemented";
-                    return (
-                      <div
-                        key={rec.id}
-                        className="p-3.5 rounded-xl border flex items-start gap-3 text-xs"
-                        style={{
-                          background: done ? "var(--surface)" : "var(--bg-elevated)",
-                          borderColor: done ? "var(--green-glow)" : "var(--border-subtle)",
-                        }}
-                      >
-                        <span
-                          className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
-                          style={{
-                            background: done ? "var(--green-dim)" : "var(--amber-dim)",
-                            color: done ? "var(--green)" : "var(--amber)",
-                          }}
-                        >
-                          {done ? <Icon name="check" size={12} strokeWidth={2.5} /> : <Icon name="alert" size={12} />}
-                        </span>
-                        <div className="space-y-1">
-                          <p className="font-medium" style={{ color: "var(--text)" }}>
-                            {rec.recommendation}
-                          </p>
-                          {done && rec.change && (
-                            <p style={{ color: "var(--text-secondary)" }}>
-                              <span className="font-semibold text-[11px]" style={{ color: "var(--green)" }}>Applied: </span>
-                              {rec.change}
-                            </p>
-                          )}
-                          {!done && rec.reason && (
-                            <p style={{ color: "var(--amber)" }}>
-                              <span className="font-semibold text-[11px]">Note: </span>
-                              {rec.reason}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : changes.length > 0 ? (
-                  changes.map((c, i) => (
                     <div
-                      key={i}
-                      className="p-3.5 rounded-xl border flex items-start gap-3 text-xs"
+                      ref={previewDocRef}
                       style={{
-                        background: "var(--surface)",
-                        borderColor: "var(--green-glow)",
+                        transform: `scale(${effectiveScale})`,
+                        transformOrigin: "top left",
+                        width: A4_WIDTH_PX,
+                        boxShadow: "var(--viewer-shadow)",
                       }}
                     >
-                      <span
-                        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
-                        style={{ background: "var(--green-dim)", color: "var(--green)" }}
-                      >
-                        <Icon name="check" size={12} strokeWidth={2.5} />
-                      </span>
-                      <div>
-                        <span className="font-semibold uppercase tracking-wider text-[10px]" style={{ color: "var(--green)" }}>
-                          {c.section}:{" "}
-                        </span>
-                        <span style={{ color: "var(--text-secondary)" }}>{c.description}</span>
-                      </div>
+                      <ResumeDocument data={tailoredResume} />
                     </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
-                    No specific changes recorded.
-                  </p>
-                )}
-              </div>
-            )}
-          </motion.div>
-        )}
+                  </div>
+                </div>
+              )}
 
-        {phase === "error" && (
-          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-5">
-            <div
-              className="rounded-xl p-4 mb-4 text-[12px]"
-              style={{ background: "var(--red-dim)", border: "1px solid var(--red-glow)", color: "var(--red)" }}
-            >
-              {error} Your original resume was not changed.
-            </div>
-            <button
-              onClick={handleGenerate}
-              className="magnetic-btn px-5 py-3 rounded-xl text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
-              Retry
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {/* Tab 2: Changes List */}
+              {viewTab === "changes" && (
+                <ul id="tailor-panel-changes" role="tabpanel" className="space-y-2.5">
+                  {recommendations.length > 0 ? (
+                    recommendations.map((rec, i) => {
+                      const done = rec.status === "implemented";
+                      return (
+                        <motion.li
+                          key={rec.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                          className="p-4 rounded-xl border flex items-start gap-3 text-[13px]"
+                          style={{
+                            background: done ? "var(--surface)" : "var(--bg-elevated)",
+                            borderColor: done ? "var(--green-glow)" : "var(--border-subtle)",
+                          }}
+                        >
+                          <span
+                            className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                            style={{
+                              background: done ? "var(--green-dim)" : "var(--amber-dim)",
+                              color: done ? "var(--green)" : "var(--amber)",
+                            }}
+                          >
+                            {done ? <Icon name="check" size={12} strokeWidth={2.5} /> : <Icon name="alert" size={12} />}
+                          </span>
+                          <div className="space-y-1 min-w-0">
+                            <p className="font-medium" style={{ color: "var(--text)" }}>
+                              {rec.recommendation}
+                            </p>
+                            {done && rec.change && (
+                              <p style={{ color: "var(--text-secondary)" }}>
+                                <span className="font-semibold text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--green)" }}>Applied · </span>
+                                {rec.change}
+                              </p>
+                            )}
+                            {!done && rec.reason && (
+                              <p style={{ color: "var(--amber)" }}>
+                                <span className="font-semibold text-[11px] font-mono uppercase tracking-wider">Note · </span>
+                                {rec.reason}
+                              </p>
+                            )}
+                          </div>
+                        </motion.li>
+                      );
+                    })
+                  ) : changes.length > 0 ? (
+                    changes.map((c, i) => (
+                      <motion.li
+                        key={i}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                        className="p-4 rounded-xl border flex items-start gap-3 text-[13px]"
+                        style={{ background: "var(--surface)", borderColor: "var(--green-glow)" }}
+                      >
+                        <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "var(--green-dim)", color: "var(--green)" }}>
+                          <Icon name="check" size={12} strokeWidth={2.5} />
+                        </span>
+                        <div>
+                          <span className="font-semibold uppercase tracking-wider text-[11px] font-mono" style={{ color: "var(--green)" }}>
+                            {c.section}:{" "}
+                          </span>
+                          <span style={{ color: "var(--text-secondary)" }}>{c.description}</span>
+                        </div>
+                      </motion.li>
+                    ))
+                  ) : (
+                    <li className="text-[13px] text-center py-8 rounded-xl border border-dashed" style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}>
+                      No specific changes recorded.
+                    </li>
+                  )}
+                </ul>
+              )}
+            </motion.div>
+          )}
+
+          {phase === "error" && (
+            <motion.div key="error" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-7">
+              <div
+                role="alert"
+                className="rounded-2xl p-4 mb-4 flex items-start gap-3"
+                style={{ background: "var(--red-dim)", border: "1px solid var(--red-glow)" }}
+              >
+                <span className="mt-0.5 shrink-0" style={{ color: "var(--red)" }}><Icon name="alert" size={16} /></span>
+                <div>
+                  <p className="text-[14px] font-medium" style={{ color: "var(--text)" }}>Tailoring didn&apos;t finish</p>
+                  <p className="text-[13px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                    {error} Your original resume was not changed.
+                  </p>
+                </div>
+              </div>
+              <Button onClick={handleGenerate} iconLeft="refresh">
+                Retry
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Print-only portal for direct PDF export */}
       {mounted && tailoredResume && createPortal(

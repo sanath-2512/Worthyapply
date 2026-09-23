@@ -144,7 +144,9 @@ A reconciliation step then rebuilds the required/matched/gap lists (with alias-a
 
 ## Tech Stack
 
-**Frontend** — [Next.js 16](https://nextjs.org/) (App Router, Turbopack) · [React 19](https://react.dev/) · [TypeScript](https://www.typescriptlang.org/) · [Tailwind CSS v4](https://tailwindcss.com/) · [Framer Motion](https://www.framer.com/motion/) · [Three.js](https://threejs.org/) via [@react-three/fiber](https://r3f.docs.pmnd.rs/) + [drei](https://github.com/pmndrs/drei)
+**Frontend** — [Next.js 16](https://nextjs.org/) (App Router, Turbopack) · [React 19](https://react.dev/) · [TypeScript](https://www.typescriptlang.org/) · [Tailwind CSS v4](https://tailwindcss.com/) · [GSAP](https://gsap.com/) (ScrollTrigger, SplitText) · [Lenis](https://lenis.darkroom.engineering/) smooth scrolling · [Framer Motion](https://www.framer.com/motion/) (presence/layout) · [Three.js](https://threejs.org/) via [@react-three/fiber](https://r3f.docs.pmnd.rs/)
+
+**Frontend motion & 3D** — one custom-shader point field (`components/three/`) tells the product story: scattered "noise" resolving into an ordered "fit" form. It runs in the landing hero (scroll-driven) and behind the processing screen, where it assembles as real pipeline steps complete. It is lazy-loaded after idle, pauses off-screen, scales particle count and pixel ratio to the device, renders a single still frame under reduced motion, and falls back to a static SVG rendition without WebGL or with Save-Data. GSAP timelines are scoped per component (`lib/motion.ts` → `useGsap`) so every trigger is reverted on view changes; Lenis is driven by GSAP's ticker so ScrollTrigger and smooth scrolling share one frame.
 
 **Backend** — [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/) · [LangChain](https://www.langchain.com/) provider adapters + custom router · [Pydantic v2](https://docs.pydantic.dev/) · [PyPDF](https://pypdf.readthedocs.io/)
 
@@ -177,20 +179,27 @@ WorthyApply/
 │   ├── app/
 │   │   ├── page.tsx                 # App flow: Landing → Workspace → Processing → Results
 │   │   ├── builder/page.tsx         # Resume Builder & Editor route
-│   │   ├── layout.tsx               # Root layout + pre-paint theme init
-│   │   └── globals.css              # Design tokens (light/dark) + print stylesheet
+│   │   ├── layout.tsx               # Root layout, self-hosted fonts, pre-paint theme init
+│   │   └── globals.css              # Design system: tokens (light/dark), type scale, components
 │   ├── components/
-│   │   ├── Landing.tsx              # Hero / landing
+│   │   ├── Landing.tsx              # Composes the landing sections
+│   │   ├── landing/                 # Nav, 3D hero, pinned "how it works", features, CTA, footer
 │   │   ├── Workspace.tsx            # Resume upload + JD input
-│   │   ├── Processing.tsx           # Live streaming progress
-│   │   ├── Results.tsx              # Scroll-driven analysis results
+│   │   ├── Processing.tsx           # Live streaming progress over the signal field
+│   │   ├── Results.tsx              # Sticky section nav + analysis results
 │   │   ├── results/                 # Score hero, skill map, requirements, tailoring action
 │   │   ├── resume/                  # Editor, live preview, document layout, PDF import
-│   │   └── ui/                      # Icon set, ThemeToggle, BackButton
+│   │   ├── three/                   # WebGL signal field, scene wrapper, static fallback
+│   │   ├── motion/                  # Reveal, SplitHeading, CountUp, Magnetic, Spotlight
+│   │   ├── providers/               # Smooth scrolling (Lenis), toasts, motion config
+│   │   └── ui/                      # Button, Tabs, Accordion, Dropzone, Toast, ScoreRing, icons…
 │   └── lib/
 │       ├── api.ts                   # SSE consumer + API client
 │       ├── types.ts                 # Analysis response types
-│       └── resume-types.ts          # ResumeData schema + local storage helpers
+│       ├── resume-types.ts          # ResumeData schema + local storage helpers
+│       ├── motion.ts                # GSAP registration, timing tokens, scoped useGsap hook
+│       ├── theme.ts                 # Theme store on <html data-theme>
+│       └── use-media.ts             # Media-query / reduced-motion hooks
 └── .env.example                     # All env vars + router tuning knobs
 ```
 
