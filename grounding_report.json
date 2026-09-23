@@ -1,259 +1,751 @@
 {
-  "generated_by": "python -m backend.tests.benchmark_grounding",
-  "before": {
-    "analysis": {
-      "cases": [
-        {
-          "id": "A1_related_parent_aws",
-          "issues": [
-            "false_gap:AWS"
-          ],
-          "score": 0
-        },
-        {
-          "id": "A2_hallucinated_kubernetes",
-          "issues": [
-            "false_match:Kubernetes",
-            "unsafe_keyword:Kubernetes"
-          ],
-          "score": 100
-        },
-        {
-          "id": "A3_weakly_expressed_rest",
-          "issues": [
-            "keyword_not_surfaced:REST APIs"
-          ],
-          "score": 50
-        },
-        {
-          "id": "A4_parent_does_not_prove_child",
-          "issues": [
-            "false_match:AWS Lambda"
-          ],
-          "score": 100
-        },
-        {
-          "id": "A5_false_synonym_java",
-          "issues": [
-            "false_match:Java"
-          ],
-          "score": 100
-        },
-        {
-          "id": "A6_true_match_kept",
-          "issues": [],
-          "score": 100
-        },
-        {
-          "id": "A7_concept_match_kept",
-          "issues": [],
-          "score": 100
-        },
-        {
-          "id": "A8_alias_postgres",
-          "issues": [
-            "false_gap:PostgreSQL"
-          ],
-          "score": 0
+  "generated_by": "python -m backend.tests.benchmark_grounding (offline, deterministic; no LLM calls)",
+  "policy": "Soft additions (missing skills, new wording) are kept and alerted; hard fabrications (numbers, scale, outcomes, ownership, seniority) are removed; nothing from the original resume may be dropped or shortened (tailoring and import).",
+  "round_2": {
+    "before_commit": "6e02871",
+    "before": {
+      "analysis": {
+        "cases": [
+          {
+            "id": "A1_related_parent_aws",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A2_hallucinated_kubernetes",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A3_weakly_expressed_rest",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A4_parent_does_not_prove_child",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A5_false_synonym_java",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A6_true_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A7_concept_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A8_alias_postgres",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A9_or_group_any_option",
+            "issues": [
+              "false_gap:Vue",
+              "status:React, Vue or Angular=missing!=matched"
+            ],
+            "score": 0
+          },
+          {
+            "id": "A10_or_group_hallucinated",
+            "issues": [
+              "status:Kubernetes or ECS=matched!=missing"
+            ],
+            "score": 100
+          },
+          {
+            "id": "A11_years_from_dates",
+            "issues": [
+              "status:3+ years of software development experience=cannot_verify!=matched"
+            ],
+            "score": 40
+          },
+          {
+            "id": "A12_years_not_from_education",
+            "issues": [],
+            "score": 40
+          },
+          {
+            "id": "A13_degree_level",
+            "issues": [
+              "status:Bachelor's degree in Computer Science or related field=cannot_verify!=matched"
+            ],
+            "score": 40
+          }
+        ],
+        "totals": {
+          "false_matches": 0,
+          "false_gaps": 1,
+          "keyword_misses": 0,
+          "unsafe_keywords": 0,
+          "wrong_status": 4,
+          "checks": 19
         }
-      ],
-      "totals": {
-        "false_matches": 3,
-        "false_gaps": 2,
-        "keyword_misses": 1,
-        "unsafe_keywords": 1,
-        "checks": 13
-      }
-    },
-    "tailoring": {
-      "cases": [
-        {
-          "id": "T1_good_rag_rewrite",
-          "issues": []
-        },
-        {
-          "id": "T2_bad_fabricated_scale_metrics",
-          "issues": [
-            "unsupported_in_output:1M",
-            "unsupported_in_output:40%",
-            "unsupported_in_output:production",
-            "unsupported_in_output:reduced latency",
-            "lost:AWS Bedrock"
-          ]
-        },
-        {
-          "id": "T3_gap_injection_kubernetes",
-          "issues": [
-            "unsupported_in_output:Kubernetes"
-          ]
-        },
-        {
-          "id": "T4_title_inflation",
-          "issues": [
-            "unsupported_in_output:Senior"
-          ]
-        },
-        {
-          "id": "T5_responsibility_escalation",
-          "issues": [
-            "unsupported_in_output:Led"
-          ]
-        },
-        {
-          "id": "T6_good_rest_terminology",
-          "issues": []
-        },
-        {
-          "id": "T7_cross_entry_tech_transfer",
-          "issues": [
-            "misattributed_in_experience:Docker"
-          ]
-        },
-        {
-          "id": "T8_rewrite_drops_real_metric",
-          "issues": [
-            "lost:30%"
-          ]
-        },
-        {
-          "id": "T9_skills_surface_vs_invent",
-          "issues": [
-            "unsupported_in_output:Terraform"
-          ]
+      },
+      "tailoring": {
+        "cases": [
+          {
+            "id": "T1_good_rag_rewrite",
+            "issues": []
+          },
+          {
+            "id": "T2_bad_fabricated_scale_metrics",
+            "issues": []
+          },
+          {
+            "id": "T3_gap_added_with_alert",
+            "issues": [
+              "gap_not_added:Kubernetes"
+            ]
+          },
+          {
+            "id": "T4_title_inflation",
+            "issues": []
+          },
+          {
+            "id": "T5_responsibility_escalation",
+            "issues": []
+          },
+          {
+            "id": "T6_good_rest_terminology",
+            "issues": []
+          },
+          {
+            "id": "T7_cross_entry_tech_transfer",
+            "issues": []
+          },
+          {
+            "id": "T8_rewrite_drops_real_metric",
+            "issues": []
+          },
+          {
+            "id": "T9_skills_surface_vs_invent",
+            "issues": [
+              "gap_not_added:Terraform"
+            ]
+          },
+          {
+            "id": "T10_compression_merge",
+            "issues": []
+          },
+          {
+            "id": "T11_plain_language_addition",
+            "issues": [
+              "unflagged:orders"
+            ]
+          }
+        ],
+        "totals": {
+          "hard_fabrications_in_output": 0,
+          "unflagged_additions": 1,
+          "gaps_not_added": 2,
+          "good_edits_lost": 0,
+          "checks": 25
         }
+      },
+      "import_fidelity": {
+        "cases": [
+          {
+            "id": "F1_lossy_extraction",
+            "issues": [
+              "lost:40 finance analysts across three regions",
+              "lost:120 nightly cron jobs",
+              "lost:retries and alerting",
+              "lost:Mentored 2 junior engineers",
+              "lost:Kafka",
+              "lost:Grounded retrieval for enterprise search",
+              "lost:Spanish (native)"
+            ]
+          }
+        ],
+        "totals": {
+          "source_facts_lost": 7,
+          "checks": 7
+        }
+      },
+      "prompt_size": {
+        "combined_prompt_avg_chars": 9646,
+        "combined_prompt_avg_tokens_est": 2411,
+        "tailor_prompt_chars": 4998,
+        "tailor_prompt_tokens_est": 1249
+      },
+      "heldout_factcheck": {
+        "legit": 11,
+        "fabricated": 13,
+        "false_positives_removed": 0,
+        "legit_alerted": 0,
+        "caught_removed": 12,
+        "caught_alerted": 0,
+        "false_negatives": 1
+      },
+      "heldout_misses": [
+        [
+          "false_negative",
+          "Built a React website for a local bakery to showcase products and take online orders.",
+          []
+        ]
       ],
-      "totals": {
-        "unsupported_claims_in_output": 9,
-        "good_edits_lost": 2,
-        "checks": 19
-      }
+      "heldout2_factcheck": {
+        "legit": 10,
+        "fabricated": 8,
+        "false_positives_removed": 0,
+        "legit_alerted": 0,
+        "caught_removed": 3,
+        "caught_alerted": 0,
+        "false_negatives": 5
+      },
+      "heldout2_misses": [
+        [
+          "false_negative",
+          "Built a Kotlin Android app for tracking workouts with Firebase sync and push notifications.",
+          []
+        ],
+        [
+          "false_negative",
+          "Designed the data warehouse and wrote SQL for monthly reports.",
+          []
+        ],
+        [
+          "false_negative",
+          "Trained a TensorFlow CNN deployed in hospitals to classify X-ray images.",
+          []
+        ],
+        [
+          "false_negative",
+          "Wrote Jest and Cypress tests for the checkout flow.",
+          []
+        ],
+        [
+          "false_negative",
+          "Built a Python Slack bot that posts standup reminders and summarizes tickets with GPT.",
+          []
+        ]
+      ]
     },
-    "prompt_size": {
-      "combined_prompt_avg_chars": 8703,
-      "combined_prompt_avg_tokens_est": 2175,
-      "tailor_prompt_chars": 8346,
-      "tailor_prompt_tokens_est": 2086
-    },
-    "heldout_factcheck": {
-      "note": "no fact-check existed before; fabrications passed through unchecked"
+    "after": {
+      "analysis": {
+        "cases": [
+          {
+            "id": "A1_related_parent_aws",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A2_hallucinated_kubernetes",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A3_weakly_expressed_rest",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A4_parent_does_not_prove_child",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A5_false_synonym_java",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A6_true_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A7_concept_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A8_alias_postgres",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A9_or_group_any_option",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A10_or_group_hallucinated",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A11_years_from_dates",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A12_years_not_from_education",
+            "issues": [],
+            "score": 40
+          },
+          {
+            "id": "A13_degree_level",
+            "issues": [],
+            "score": 100
+          }
+        ],
+        "totals": {
+          "false_matches": 0,
+          "false_gaps": 0,
+          "keyword_misses": 0,
+          "unsafe_keywords": 0,
+          "wrong_status": 0,
+          "checks": 19
+        }
+      },
+      "tailoring": {
+        "cases": [
+          {
+            "id": "T1_good_rag_rewrite",
+            "issues": []
+          },
+          {
+            "id": "T2_bad_fabricated_scale_metrics",
+            "issues": []
+          },
+          {
+            "id": "T3_gap_added_with_alert",
+            "issues": []
+          },
+          {
+            "id": "T4_title_inflation",
+            "issues": []
+          },
+          {
+            "id": "T5_responsibility_escalation",
+            "issues": []
+          },
+          {
+            "id": "T6_good_rest_terminology",
+            "issues": []
+          },
+          {
+            "id": "T7_cross_entry_tech_transfer",
+            "issues": []
+          },
+          {
+            "id": "T8_rewrite_drops_real_metric",
+            "issues": []
+          },
+          {
+            "id": "T9_skills_surface_vs_invent",
+            "issues": []
+          },
+          {
+            "id": "T10_compression_merge",
+            "issues": []
+          },
+          {
+            "id": "T11_plain_language_addition",
+            "issues": []
+          }
+        ],
+        "totals": {
+          "hard_fabrications_in_output": 0,
+          "unflagged_additions": 0,
+          "gaps_not_added": 0,
+          "good_edits_lost": 0,
+          "checks": 25
+        }
+      },
+      "import_fidelity": {
+        "cases": [
+          {
+            "id": "F1_lossy_extraction",
+            "issues": []
+          }
+        ],
+        "totals": {
+          "source_facts_lost": 0,
+          "checks": 7
+        }
+      },
+      "prompt_size": {
+        "combined_prompt_avg_chars": 9646,
+        "combined_prompt_avg_tokens_est": 2411,
+        "tailor_prompt_chars": 4908,
+        "tailor_prompt_tokens_est": 1227
+      },
+      "heldout_factcheck": {
+        "legit": 11,
+        "fabricated": 13,
+        "false_positives_removed": 0,
+        "legit_alerted": 4,
+        "caught_removed": 10,
+        "caught_alerted": 3,
+        "false_negatives": 0
+      },
+      "heldout_misses": [
+        [
+          "alert_on_legit",
+          "Wrote Python scripts to clean and normalize datasets before analysis.",
+          [
+            "soft:wording:normalize"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Built a chatbot using LangChain and the OpenAI API to answer user questions.",
+          [
+            "soft:wording:answer, user, questions"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Created Tableau dashboards that gave the sales team visibility into their pipeline.",
+          [
+            "soft:wording:pipeline"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Set up CI/CD with GitHub Actions to run tests on every pull request.",
+          [
+            "soft:wording:pull, request"
+          ]
+        ]
+      ],
+      "heldout2_factcheck": {
+        "legit": 10,
+        "fabricated": 8,
+        "false_positives_removed": 0,
+        "legit_alerted": 8,
+        "caught_removed": 3,
+        "caught_alerted": 5,
+        "false_negatives": 0
+      },
+      "heldout2_misses": [
+        [
+          "alert_on_legit",
+          "Developed a Kotlin Android app that lets users track their workouts.",
+          [
+            "soft:wording:lets, users"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Maintained and updated the company's WordPress blog.",
+          [
+            "soft:wording:updated"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Wrote SQL queries to generate monthly business reports.",
+          [
+            "soft:wording:generate, business"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Diagnosed and fixed bugs in the React frontend.",
+          [
+            "soft:wording:diagnosed"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Trained a TensorFlow CNN to classify chest X-ray images.",
+          [
+            "soft:wording:chest"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Built an Airflow ETL pipeline loading sales data into BigQuery.",
+          [
+            "soft:wording:pipeline, loading"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Added Jest unit tests covering the checkout flow.",
+          [
+            "soft:wording:added, covering"
+          ]
+        ],
+        [
+          "alert_on_legit",
+          "Implemented Figma designs as responsive HTML/CSS pages.",
+          [
+            "soft:wording:responsive, pages"
+          ]
+        ]
+      ]
     }
   },
-  "after": {
-    "analysis": {
-      "cases": [
-        {
-          "id": "A1_related_parent_aws",
-          "issues": [],
-          "score": 50
-        },
-        {
-          "id": "A2_hallucinated_kubernetes",
-          "issues": [],
-          "score": 50
-        },
-        {
-          "id": "A3_weakly_expressed_rest",
-          "issues": [],
-          "score": 50
-        },
-        {
-          "id": "A4_parent_does_not_prove_child",
-          "issues": [],
-          "score": 0
-        },
-        {
-          "id": "A5_false_synonym_java",
-          "issues": [],
-          "score": 0
-        },
-        {
-          "id": "A6_true_match_kept",
-          "issues": [],
-          "score": 100
-        },
-        {
-          "id": "A7_concept_match_kept",
-          "issues": [],
-          "score": 100
-        },
-        {
-          "id": "A8_alias_postgres",
-          "issues": [],
-          "score": 100
+  "round_1": {
+    "note": "Previous round (pre-6e02871 vs 6e02871), original fixtures and policy.",
+    "before": {
+      "analysis": {
+        "cases": [
+          {
+            "id": "A1_related_parent_aws",
+            "issues": [
+              "false_gap:AWS"
+            ],
+            "score": 0
+          },
+          {
+            "id": "A2_hallucinated_kubernetes",
+            "issues": [
+              "false_match:Kubernetes",
+              "unsafe_keyword:Kubernetes"
+            ],
+            "score": 100
+          },
+          {
+            "id": "A3_weakly_expressed_rest",
+            "issues": [
+              "keyword_not_surfaced:REST APIs"
+            ],
+            "score": 50
+          },
+          {
+            "id": "A4_parent_does_not_prove_child",
+            "issues": [
+              "false_match:AWS Lambda"
+            ],
+            "score": 100
+          },
+          {
+            "id": "A5_false_synonym_java",
+            "issues": [
+              "false_match:Java"
+            ],
+            "score": 100
+          },
+          {
+            "id": "A6_true_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A7_concept_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A8_alias_postgres",
+            "issues": [
+              "false_gap:PostgreSQL"
+            ],
+            "score": 0
+          }
+        ],
+        "totals": {
+          "false_matches": 3,
+          "false_gaps": 2,
+          "keyword_misses": 1,
+          "unsafe_keywords": 1,
+          "checks": 13
         }
-      ],
-      "totals": {
-        "false_matches": 0,
-        "false_gaps": 0,
-        "keyword_misses": 0,
-        "unsafe_keywords": 0,
-        "checks": 13
+      },
+      "tailoring": {
+        "cases": [
+          {
+            "id": "T1_good_rag_rewrite",
+            "issues": []
+          },
+          {
+            "id": "T2_bad_fabricated_scale_metrics",
+            "issues": [
+              "unsupported_in_output:1M",
+              "unsupported_in_output:40%",
+              "unsupported_in_output:production",
+              "unsupported_in_output:reduced latency",
+              "lost:AWS Bedrock"
+            ]
+          },
+          {
+            "id": "T3_gap_injection_kubernetes",
+            "issues": [
+              "unsupported_in_output:Kubernetes"
+            ]
+          },
+          {
+            "id": "T4_title_inflation",
+            "issues": [
+              "unsupported_in_output:Senior"
+            ]
+          },
+          {
+            "id": "T5_responsibility_escalation",
+            "issues": [
+              "unsupported_in_output:Led"
+            ]
+          },
+          {
+            "id": "T6_good_rest_terminology",
+            "issues": []
+          },
+          {
+            "id": "T7_cross_entry_tech_transfer",
+            "issues": [
+              "misattributed_in_experience:Docker"
+            ]
+          },
+          {
+            "id": "T8_rewrite_drops_real_metric",
+            "issues": [
+              "lost:30%"
+            ]
+          },
+          {
+            "id": "T9_skills_surface_vs_invent",
+            "issues": [
+              "unsupported_in_output:Terraform"
+            ]
+          }
+        ],
+        "totals": {
+          "unsupported_claims_in_output": 9,
+          "good_edits_lost": 2,
+          "checks": 19
+        }
+      },
+      "prompt_size": {
+        "combined_prompt_avg_chars": 8703,
+        "combined_prompt_avg_tokens_est": 2175,
+        "tailor_prompt_chars": 8346,
+        "tailor_prompt_tokens_est": 2086
+      },
+      "heldout_factcheck": {
+        "note": "no fact-check existed before; fabrications passed through unchecked"
       }
     },
-    "tailoring": {
-      "cases": [
-        {
-          "id": "T1_good_rag_rewrite",
-          "issues": []
-        },
-        {
-          "id": "T2_bad_fabricated_scale_metrics",
-          "issues": []
-        },
-        {
-          "id": "T3_gap_injection_kubernetes",
-          "issues": []
-        },
-        {
-          "id": "T4_title_inflation",
-          "issues": []
-        },
-        {
-          "id": "T5_responsibility_escalation",
-          "issues": []
-        },
-        {
-          "id": "T6_good_rest_terminology",
-          "issues": []
-        },
-        {
-          "id": "T7_cross_entry_tech_transfer",
-          "issues": []
-        },
-        {
-          "id": "T8_rewrite_drops_real_metric",
-          "issues": []
-        },
-        {
-          "id": "T9_skills_surface_vs_invent",
-          "issues": []
+    "after": {
+      "analysis": {
+        "cases": [
+          {
+            "id": "A1_related_parent_aws",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A2_hallucinated_kubernetes",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A3_weakly_expressed_rest",
+            "issues": [],
+            "score": 50
+          },
+          {
+            "id": "A4_parent_does_not_prove_child",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A5_false_synonym_java",
+            "issues": [],
+            "score": 0
+          },
+          {
+            "id": "A6_true_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A7_concept_match_kept",
+            "issues": [],
+            "score": 100
+          },
+          {
+            "id": "A8_alias_postgres",
+            "issues": [],
+            "score": 100
+          }
+        ],
+        "totals": {
+          "false_matches": 0,
+          "false_gaps": 0,
+          "keyword_misses": 0,
+          "unsafe_keywords": 0,
+          "checks": 13
         }
-      ],
-      "totals": {
-        "unsupported_claims_in_output": 0,
-        "good_edits_lost": 0,
-        "checks": 19
-      }
-    },
-    "prompt_size": {
-      "combined_prompt_avg_chars": 9646,
-      "combined_prompt_avg_tokens_est": 2411,
-      "tailor_prompt_chars": 4998,
-      "tailor_prompt_tokens_est": 1249
-    },
-    "heldout_factcheck": {
-      "legit": 11,
-      "fabricated": 13,
-      "false_positives": 0,
-      "false_negatives": 1,
-      "caught": 12
-    },
-    "heldout_misses": [
-      [
-        "false_negative",
-        "Built a React website for a local bakery to showcase products and take online orders.",
-        []
+      },
+      "tailoring": {
+        "cases": [
+          {
+            "id": "T1_good_rag_rewrite",
+            "issues": []
+          },
+          {
+            "id": "T2_bad_fabricated_scale_metrics",
+            "issues": []
+          },
+          {
+            "id": "T3_gap_injection_kubernetes",
+            "issues": []
+          },
+          {
+            "id": "T4_title_inflation",
+            "issues": []
+          },
+          {
+            "id": "T5_responsibility_escalation",
+            "issues": []
+          },
+          {
+            "id": "T6_good_rest_terminology",
+            "issues": []
+          },
+          {
+            "id": "T7_cross_entry_tech_transfer",
+            "issues": []
+          },
+          {
+            "id": "T8_rewrite_drops_real_metric",
+            "issues": []
+          },
+          {
+            "id": "T9_skills_surface_vs_invent",
+            "issues": []
+          }
+        ],
+        "totals": {
+          "unsupported_claims_in_output": 0,
+          "good_edits_lost": 0,
+          "checks": 19
+        }
+      },
+      "prompt_size": {
+        "combined_prompt_avg_chars": 9646,
+        "combined_prompt_avg_tokens_est": 2411,
+        "tailor_prompt_chars": 4998,
+        "tailor_prompt_tokens_est": 1249
+      },
+      "heldout_factcheck": {
+        "legit": 11,
+        "fabricated": 13,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "caught": 12
+      },
+      "heldout_misses": [
+        [
+          "false_negative",
+          "Built a React website for a local bakery to showcase products and take online orders.",
+          []
+        ]
       ]
-    ]
+    }
   }
 }

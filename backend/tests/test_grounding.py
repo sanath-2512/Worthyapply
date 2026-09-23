@@ -137,35 +137,46 @@ ANALYSIS = {
 }
 
 
-def test_gaps_never_become_instructions():
-    checklist = T.build_recommendation_checklist(ANALYSIS, "Built internal APIs with FastAPI. Docker.")
-    assert not any("kubernetes" in c.lower() for c in checklist)
-    assert "Kubernetes" in T.build_do_not_claim(ANALYSIS, "Built internal APIs with FastAPI. Docker.")
+def test_gaps_are_added_with_alert_instruction():
+    text = "Built internal APIs with FastAPI. Docker."
+    checklist = T.build_recommendation_checklist(ANALYSIS, text)
+    assert any("Kubernetes" in c and "flagged" in c for c in checklist)
+    assert T.build_skill_gaps(ANALYSIS, text) == ["Kubernetes"]
 
 
-def test_finalize_keeps_truthful_edit_and_surfaces_evidenced_skill():
+def test_finalize_adds_gap_skill_and_flags_it():
     patch = T.ResumeTailorPatch(experience_edits=[T.BulletEdit(index=0, new_description=
         "<ul><li>Built internal REST APIs with FastAPI.</li><li>Cut costs 20%.</li></ul>")])
     tailored, added, report = T.finalize_tailoring(_resume(), patch, ANALYSIS)
     assert "REST APIs with FastAPI" in tailored.experience[0].description
-    assert "Docker" in added                 # evidenced in a project, not yet listed
-    assert "Kubernetes" not in str(tailored.model_dump())
-    assert report["reverted"] == []
+    assert "Docker" in added and "Kubernetes" in added          # evidenced + gap
+    assert report["flagged_skills"] == ["Kubernetes"]            # only the gap needs review
+    assert report["removed"] == [] and report["restored"] == []
 
 
-def test_finalize_reverts_fabrication_and_strips_gap_skills():
+def test_finalize_keeps_soft_claims_with_alert_and_removes_hard_ones():
     patch = T.ResumeTailorPatch(
         experience_edits=[T.BulletEdit(index=0, new_description=
-            "<ul><li>Led Kubernetes-based APIs serving millions with FastAPI.</li><li>Cut costs 20%.</li></ul>")],
-        skill_edits=[T.SkillCategoryEdit(index=0, new_skills="Python, Kubernetes")],
+            "<ul><li>Built internal APIs with FastAPI, deployed on Kubernetes.</li>"
+            "<li>Led a team that cut costs 20% for millions of users.</li></ul>")],
         new_title="Senior Engineer",
     )
     tailored, added, report = T.finalize_tailoring(_resume(), patch, ANALYSIS)
-    dump = str(tailored.model_dump())
-    assert "Kubernetes" not in dump and "millions" not in dump and "Senior" not in dump
-    assert tailored.experience[0].description == _resume().experience[0].description
-    assert "Kubernetes" in report["removed_skills"]
-    assert {r["section"] for r in report["reverted"]} >= {"experience", "title"}
+    desc = tailored.experience[0].description
+    assert "deployed on Kubernetes" in desc                       # soft: kept...
+    assert any(a["added"] == "Kubernetes" for a in report["alerts"])   # ...and alerted
+    assert "millions" not in desc and "Led" not in desc          # hard: removed
+    assert "Cut costs 20%." in desc                               # original restored
+    assert tailored.personal.title == "Engineer"                  # seniority not invented
+
+
+def test_no_compression_restores_merged_or_dropped_bullets():
+    patch = T.ResumeTailorPatch(experience_edits=[T.BulletEdit(index=0, new_description=
+        "<ul><li>Built APIs.</li></ul>")])                        # merged + dropped detail
+    tailored, _, report = T.finalize_tailoring(_resume(), patch, ANALYSIS)
+    desc = tailored.experience[0].description
+    assert "FastAPI" in desc and "20%" in desc
+    assert report["restored"]
 
 
 def test_recommendations_report_honestly():
@@ -175,5 +186,105 @@ def test_recommendations_report_honestly():
          T.RecommendationResult(id=2, recommendation="Reorder", status="not_implemented", reason="already ordered")],
         ["Kubernetes"],
     )
-    assert [r["status"] for r in recs] == ["implemented", "not_implemented", "not_implemented"]
-    assert "left out" in recs[2]["reason"]
+    assert [r["status"] for r in recs] == ["implemented", "not_implemented", "implemented"]
+    assert "confirm" in recs[2]["change"]
+
+
+# ---------------------------------------------------------------- OR-groups / years / degree
+RESUME_DATED = """EXPERIENCE
+Software Engineer, Acme Jan 2020 – Present
+Built services in Python and Vue.
+Intern, Beta 06/2018 - 12/2018
+EDUCATION
+B.Tech in Computer Science, XYZ University 2014 - 2018
+"""
+
+
+def test_or_group_satisfied_by_any_option():
+    a = _ra("React, Vue or Angular", "missing", kind="or_group")
+    c = P._postprocess_combined(_combined([a]), resume_text=RESUME_DATED)
+    r = c.match_analysis.requirement_assessments[0]
+    assert r.match_status == "matched" and "Vue" in r.evidence
+
+
+def test_or_group_hallucinated_match_is_downgraded():
+    a = _ra("Kubernetes or ECS", "matched", "containers", kind="or_group")
+    c = P._postprocess_combined(_combined([a]), resume_text=RESUME_DATED)
+    assert c.match_analysis.requirement_assessments[0].match_status == "missing"
+
+
+def test_general_years_counted_from_dated_roles_excluding_education():
+    from backend import requirement_checks as R
+    import datetime as d
+    assert R.total_years(RESUME_DATED, d.date(2026, 1, 1)) == 6.7   # 73 + 7 months (inclusive), not the degree years
+    c = P._postprocess_combined(_combined([_ra("5+ years of software development", "cannot_verify", kind="experience")]),
+                                resume_text=RESUME_DATED)
+    assert c.match_analysis.requirement_assessments[0].match_status == "matched"
+
+
+def test_skill_years_only_partial_and_never_lowered():
+    c = P._postprocess_combined(_combined([_ra("5+ years Python", "missing", kind="experience"),
+                                           _ra("15+ years Python", "matched", kind="experience")]),
+                                resume_text=RESUME_DATED)
+    a, b = c.match_analysis.requirement_assessments
+    assert a.match_status == "partial" and a.what_missing
+    assert b.match_status == "matched"                           # upgrade-only
+
+
+def test_degree_level_and_field():
+    from backend import requirement_checks as R
+    assert R.degree_check("Bachelor's degree in Computer Science or related field", RESUME_DATED) == "matched"
+    assert R.degree_check("Master's degree in Computer Science", RESUME_DATED) is None
+    assert R.degree_check("Bachelor's degree in Finance", RESUME_DATED) == "partial"
+    assert R.degree_level("we will be happy to hear from you") == 0
+    c = P._postprocess_combined(_combined([_ra("Bachelor's degree in CS or related", "cannot_verify", kind="education")]),
+                                resume_text=RESUME_DATED)
+    assert c.match_analysis.requirement_assessments[0].match_status == "matched"
+
+
+# ---------------------------------------------------------------- import fidelity
+RAW = """JANE DOE
+EXPERIENCE
+Software Engineer, Acme Corp Jan 2021 – Present
+• Built a FastAPI service for invoice processing used by 40 finance analysts across three regions.
+• Mentored 2 junior engineers.
+PUBLICATIONS
+Rivera, A. and Doe, J. Grounded retrieval for enterprise search, 2023.
+"""
+
+
+def _imported(bullets):
+    from backend.fidelity import restore_fidelity
+    from backend.resume_extractor import ExperienceOut as E
+    r = ExtractedResume(personal=PersonalInfoOut(fullName="Jane Doe"),
+                        experience=[E(role="Software Engineer", company="Acme Corp", description=G.to_ul(bullets))])
+    return restore_fidelity(r, RAW)
+
+
+def test_import_restores_shortened_bullets_and_recovers_missing():
+    out, report = _imported(["Built a FastAPI service for invoice processing."])
+    desc = out.experience[0].description
+    assert "40 finance analysts across three regions" in desc      # shortened -> original wording
+    assert "Mentored 2 junior engineers." in desc                  # missing bullet -> its own entry
+    assert out.activities and "Grounded retrieval" in out.activities[-1].description
+    assert "Software Engineer, Acme Corp" not in out.activities[-1].description   # header not duplicated
+    assert report["restored_bullets"] == 1
+
+
+def test_import_fidelity_is_idempotent_on_complete_extraction():
+    full = ["Built a FastAPI service for invoice processing used by 40 finance analysts across three regions.",
+            "Mentored 2 junior engineers."]
+    out, _ = _imported(full)
+    from backend.fidelity import restore_fidelity
+    again, report = restore_fidelity(out, RAW)
+    assert report == {"restored_bullets": 0, "recovered_segments": []}
+    assert again == out
+
+
+def test_cleanup_moves_technologies_line_instead_of_deleting():
+    from backend.resume_extractor import _cleanup, ExperienceOut as E
+    r = ExtractedResume(experience=[E(role="Dev", company="X", technologies="Python",
+                                      description="<ul><li>Built things.</li><li>Technologies: Docker, Python</li></ul>")])
+    e = _cleanup(r).experience[0]
+    assert "Docker" in e.technologies and "Python" in e.technologies
+    assert "Technologies" not in e.description

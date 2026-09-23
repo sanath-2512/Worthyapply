@@ -64,7 +64,7 @@ class GroqProvider(LLMProvider):
         return ChatGroq(
             model=self.model,
             temperature=0,
-            max_tokens=8000,
+            max_tokens=16000,  # long resumes: a truncated structured output loses content
             max_retries=0,
             timeout=self.timeout,
             api_key=self._api_key(),
@@ -84,7 +84,7 @@ class GeminiProvider(LLMProvider):
         return ChatGoogleGenerativeAI(
             model=self.model,
             temperature=0,
-            max_output_tokens=8192,
+            max_output_tokens=16384,
             max_retries=0,
             timeout=self.timeout,
             google_api_key=self._api_key(),
@@ -102,7 +102,7 @@ class OpenRouterProvider(LLMProvider):
         return ChatOpenAI(
             model=self.model,
             temperature=0,
-            max_tokens=8000,
+            max_tokens=16000,
             max_retries=0,
             timeout=self.timeout,
             api_key=self._api_key(),

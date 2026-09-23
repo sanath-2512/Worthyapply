@@ -203,7 +203,9 @@ RULES:
     skills in one category called "Skills".
 11. Map extracurriculars, achievements, hackathons, competitions, sports,
     and positions of responsibility to activities.
-12. Do NOT rewrite or optimize wording — extract accurately.
+12. COPY TEXT VERBATIM. Do NOT rewrite, shorten, summarize, merge or optimize
+    wording. Every bullet must contain the COMPLETE original sentence, word for
+    word, including all numbers, names and technologies. Never drop a bullet.
 13. COMPLETENESS IS CRITICAL: extract EVERY section including the ones at
     the very END of the resume (e.g. Extra-Curricular Activities,
     Achievements). Do not stop early. Every activity, hackathon, sport,
@@ -220,6 +222,12 @@ RULES:
     - Match bullets to entries by topic and the order they appear.
 15. Ignore any text after a "WA DATA B64" marker — that is machine data,
     not resume content.
+16. SECTIONS WITHOUT A FIELD (publications, awards, honours, languages spoken,
+    volunteering, interests, references, patents, talks, etc.) must NOT be
+    dropped: add each as an activity whose title is the section heading and
+    whose description holds its items verbatim as bullets.
+17. Education details (coursework, thesis, honours, relevant subjects) go in the
+    education entry's `info` field verbatim.
 
 RESUME TEXT:
 {resume_text}
@@ -238,7 +246,7 @@ def extract_resume(pdf_bytes: bytes) -> ExtractedResume:
     from .llm import get_structured_llm
     llm = get_structured_llm(ExtractedResume)
     result = llm.invoke(prompt)
-    return _cleanup(result)
+    return finalize_import(result, resume_text)
 
 
 def extract_resume_streaming(pdf_bytes: bytes):
@@ -299,7 +307,7 @@ def extract_resume_streaming(pdf_bytes: bytes):
                 result = item["value"]
         if result is None:
             raise ValueError("no result produced")
-        result = _cleanup(result)
+        result = finalize_import(result, resume_text)
     except Exception:
         logger.exception("resume import generation failed")
         yield {
@@ -316,28 +324,57 @@ def extract_resume_streaming(pdf_bytes: bytes):
 
 def _cleanup(result: ExtractedResume) -> ExtractedResume:
     """
-    Remove any 'Technologies:' line that leaked into a description so it
-    doesn't appear twice (once in description, once in the technologies field).
+    Move any 'Technologies:' line that leaked into a description into the
+    `technologies` field, so it doesn't appear twice. If the field already holds
+    it, the duplicate line is removed; if the field is empty, the value is moved
+    there — never discarded.
     """
     import re
 
-    def strip_tech(html: str) -> str:
-        if not html:
-            return html
-        # Remove <li>Technologies: ...</li> items
-        html = re.sub(r"<li>\s*Technologies\s*:.*?</li>", "", html, flags=re.IGNORECASE | re.DOTALL)
-        # Remove standalone "Technologies: ..." paragraphs/lines
-        html = re.sub(r"<p>\s*Technologies\s*:.*?</p>", "", html, flags=re.IGNORECASE | re.DOTALL)
-        # Clean up empty lists left behind
+    tech_li = re.compile(r"<li>\s*Technologies\s*:(.*?)</li>", re.IGNORECASE | re.DOTALL)
+    tech_p = re.compile(r"<p>\s*Technologies\s*:(.*?)</p>", re.IGNORECASE | re.DOTALL)
+
+    def fix(entry) -> None:
+        html = entry.description or ""
+        found = [m.strip() for pat in (tech_li, tech_p) for m in pat.findall(html)]
+        if not found:
+            return
+        values = [re.sub(r"<[^>]+>", "", v).strip() for v in found if v.strip()]
+        existing = (entry.technologies or "").strip()
+        if values:
+            merged = [x.strip() for x in existing.split(",") if x.strip()]
+            for v in values:
+                for part in (x.strip() for x in v.split(",")):
+                    if part and part.lower() not in {m.lower() for m in merged}:
+                        merged.append(part)
+            entry.technologies = ", ".join(merged)
+        html = tech_li.sub("", html)
+        html = tech_p.sub("", html)
         html = re.sub(r"<ul>\s*</ul>", "", html, flags=re.IGNORECASE)
-        return html.strip()
+        entry.description = html.strip()
 
     for exp in result.experience:
-        exp.description = strip_tech(exp.description)
+        fix(exp)
     for proj in result.projects:
-        proj.description = strip_tech(proj.description)
+        fix(proj)
 
     return result
 
 
+def finalize_import(result: ExtractedResume, resume_text: str) -> ExtractedResume:
+    """_cleanup + the fidelity pass: restore shortened bullets and recover any
+    content the extraction left out (see fidelity.py). Nothing is compressed."""
+    import logging
+    from .fidelity import restore_fidelity
 
+    result = _cleanup(result)
+    try:
+        result, report = restore_fidelity(result, resume_text)
+        if report["restored_bullets"] or report["recovered_segments"]:
+            logging.getLogger("worthyapply.resume_import").info(
+                "import fidelity: restored %d bullets, recovered %d segments",
+                report["restored_bullets"], len(report["recovered_segments"]),
+            )
+    except Exception:  # the repair must never break an import
+        logging.getLogger("worthyapply.resume_import").exception("fidelity pass failed")
+    return result

@@ -87,9 +87,10 @@ The job analysis, match analysis, and optimization recommendations are produced 
 
 WorthyApply is deliberately built to **never fabricate experience**. This is enforced in code, not just prompts:
 
-- The tailoring agent may only rewrite, reorder, and surface content that already exists somewhere in the resume. It cannot add a skill, employer, title, date, metric, or years-of-experience that isn't there.
-- A deterministic post-processing step strips non-skills (dispositions like "willingness to learn", soft-skill phrases, education sentences) out of skill lists, and blocks any tailored bullet that would introduce an unverified requirement — moving it into an honest warning instead.
-- Genuine gaps are reported to the user, not silently filled in.
+- The tailoring agent rewrites, reorders and surfaces content that already exists in the resume. It cannot invent a metric, scale, outcome, stronger responsibility, seniority, employer, title or date — a deterministic fact-check removes those and restores the original wording.
+- Job requirements the resume doesn't show (e.g. a missing skill) **are** added, so the next analysis can count them — but every such addition is **flagged for the candidate to confirm** before sending. Nothing is added silently.
+- Nothing from the candidate's resume is compressed or dropped, on import or when tailoring.
+- A deterministic post-processing step strips non-skills (dispositions like "willingness to learn", soft-skill phrases, education sentences) out of skill lists.
 
 Tailoring here means presenting real experience in the target role's language — not manufacturing a work history.
 
@@ -127,18 +128,25 @@ The model classifies each requirement; `backend/skills.py` then checks the verdi
 - **A specific technology proves its family, never the reverse.** "AWS Bedrock, S3" satisfies *AWS*; *AWS* alone does not satisfy *AWS Lambda*. "Postgres" is *PostgreSQL*; "JavaScript" is not *Java*.
 - A claimed match on a concrete technology the resume never names is overruled to **missing**; an over-strict "missing" on something the resume does name is corrected to **matched**.
 - Every assessment carries an `evidence_strength`: `strong` (named), `related` (via a more specific technology), `implicit` (demonstrated but not in the JD's words — e.g. a FastAPI backend for *REST APIs*: present but weakly expressed), or `none`. Related/implicit terms are surfaced as "say it in the job's words" improvements.
-- Durations ("5+ years"), education and OR-groups are left to the model.
+- `backend/requirement_checks.py` covers the rest, **upgrade-only** (the model's verdict stands when the resume can't settle it): an **OR-group** is met by any listed alternative (and a claimed match where none of the named technologies appears is overruled); **years** are summed from the resume's dated roles (overlaps merged, education dates excluded) — enough years marks a general requirement matched and a skill-specific one partial; **degree level** (Bachelor's / Master's / PhD, plus field) is read from the education lines.
 
 ### Tailoring
 
 `backend/resume_tailor.py` rewrites and reorders the **existing** structured resume as a small **patch**, never a regenerated document:
 
-1. A checklist and a compact evidence brief are built deterministically from the analysis. Genuine gaps become a **do-not-claim** list — they are reported to the user, never written into the resume.
+1. A checklist and a compact evidence brief are built deterministically from the analysis. Genuine gaps are added to the resume's skills **with a review alert**, so a re-analysis scores them.
 2. The agent returns targeted edits: bullet rewrites in the JD's terms, section/skill reordering, summary/title.
-3. **Fact-check** (`backend/grounding.py`): every rewritten bullet, the summary and the title are decomposed into checkable claims — numbers, technologies, scale ("production", "millions"), outcomes ("reduced latency"), ownership ("led", "architected"), seniority — and each must be supported by the original entry it rewrites. Unsupported bullets are dropped; if that would lose original content (a metric or technology), the entry reverts to its original wording. New skills must already be evidenced in the resume.
-4. Recommendations are reported honestly as `implemented` / `not_implemented`, and a `fact_check` report lists what was reverted.
+3. **Fact-check** (`backend/grounding.py`): every rewritten bullet, the summary and the title are decomposed into checkable claims against the original entry they rewrite:
+   - **hard** — invented numbers, scale ("production", "millions"), outcomes ("reduced latency"), stronger ownership ("led", "architected"), seniority → removed, original wording restored;
+   - **soft** — a technology the entry doesn't show, or new plain-language details ("…and take online orders") → kept and listed as a review alert.
+4. **No compression:** every original bullet must survive in a rewrite that keeps its content and all of its facts (numbers, technologies); otherwise the original bullet is put back.
+5. Recommendations are reported honestly as `implemented` / `not_implemented`, and a `fact_check` report lists every alert, removal and restoration.
 
-`python -m backend.tests.benchmark_grounding` measures this layer offline on fixed adversarial model outputs (results in `grounding_report.json`); `benchmark_analyze` measures the live LLM path and needs API keys.
+### Import fidelity
+
+The PDF import is an LLM extraction, which can shorten a bullet or skip a section the schema has no field for. `backend/fidelity.py` compares the result with the raw PDF text and repairs it deterministically: shortened bullets are restored to the original wording, a missing bullet goes back under its own job, and anything else (publications, languages, …) is kept in an "Additional information" block. A "Technologies:" line is moved into the entry's technologies field, not deleted. Only verbatim source text is inserted.
+
+`python -m backend.tests.benchmark_grounding` measures this layer offline on fixed adversarial model outputs and two held-out rewrite sets (results in `grounding_report.json`); `benchmark_analyze` measures the live LLM path and needs API keys.
 
 ### LLM provider router
 
@@ -177,6 +185,10 @@ WorthyApply/
 │   ├── pipeline.py                  # Combined analysis + deterministic scoring + reconciliation
 │   ├── resume_extractor.py          # PDF -> structured ExtractedResume
 │   ├── resume_tailor.py             # Applies analysis recommendations as a resume patch
+│   ├── skills.py                    # Skill hierarchy: aliases, broader/narrower, tool vs concept
+│   ├── requirement_checks.py        # OR-groups, years from dated roles, degree level
+│   ├── grounding.py                 # Claim-level fact-check for generated text
+│   ├── fidelity.py                  # Lossless import: repairs extraction against the PDF text
 │   ├── llm.py                       # Compatibility shim over llm_router
 │   └── llm_router/
 │       ├── config.py                # Env-driven providers, priorities, timeouts, cooldowns

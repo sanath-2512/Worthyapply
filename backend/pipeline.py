@@ -24,6 +24,7 @@ from pypdf import PdfReader
 
 from . import grounding as _G
 from . import skills as _SK
+from . import requirement_checks as _RC
 
 
 def _run_agent(prompt: str, response_format):
@@ -916,17 +917,6 @@ def _reconcile_skill_sets(ja: "JobAnalysis", ma: "MatchAnalysis") -> None:
         assessment for it is matched/partial; otherwise it is a GAP.
       - matched + gaps therefore always partition the required set exactly.
     """
-    # Canonical required set (clean, deduped).
-    required_raw = _filter_non_skills(list(ma.required_skills) + list(ja.required_skills))
-    for grp in ja.alternative_skill_groups:
-        if grp.required and grp.options:
-            # Represent an OR-group by its first clean option (any one satisfies it).
-            required_raw.append(grp.options[0])
-    required = _dedup_skills(required_raw)
-    if not required:
-        # Nothing structured to reconcile against — leave lists filtered as-is.
-        return
-
     # Evidence of what is satisfied: model's matching_skills + matched/partial assessments.
     satisfied_norms: set[str] = {_norm_skill(s) for s in ma.matching_skills}
     for a in ma.requirement_assessments or []:
@@ -944,6 +934,21 @@ def _reconcile_skill_sets(ja: "JobAnalysis", ma: "MatchAnalysis") -> None:
         for x in (a.requirement, a.evidence) if x
     ]
     satisfied_keys = {k for k in (_SK.canonical(x) for x in satisfied_raw) if k}
+
+    # Canonical required set (clean, deduped).
+    required_raw = _filter_non_skills(list(ma.required_skills) + list(ja.required_skills))
+    for grp in ja.alternative_skill_groups:
+        if grp.required and grp.options:
+            # Represent an OR-group by the option the candidate satisfies (any one
+            # satisfies it), else by its first clean option.
+            chosen = next((o for o in grp.options
+                           if _SK.canonical(o) in satisfied_keys or _norm_skill(o) in satisfied_norms),
+                          grp.options[0])
+            required_raw.append(chosen)
+    required = _dedup_skills(required_raw)
+    if not required:
+        # Nothing structured to reconcile against — leave lists filtered as-is.
+        return
 
     matched: list[str] = []
     gaps: list[str] = []
@@ -964,6 +969,71 @@ def _reconcile_skill_sets(ja: "JobAnalysis", ma: "MatchAnalysis") -> None:
     ma.skill_gaps = gaps
 
 
+_DEGREE_REQ = re.compile(r"\b(degree|bachelor'?s?|master'?s|ph\.?\s?d|doctorate)\b", re.IGNORECASE)
+
+
+def _upgrade(a: "RequirementAssessment", status: str, evidence: str, strength: str) -> None:
+    """Raise a verdict to `status` (never lowers it)."""
+    rank = {"missing": 0, "cannot_verify": 1, "partial": 2, "matched": 3}
+    if rank[status] <= rank.get(a.match_status, 0):
+        return
+    a.match_status = status
+    a.satisfied = "yes" if status == "matched" else "partial"
+    a.evidence = evidence
+    if status == "matched":
+        a.what_missing = ""
+    if a.evidence_strength in ("unknown", "none"):
+        a.evidence_strength = strength
+
+
+def _check_or_group(a, groups, ma, resume_text: str) -> None:
+    """Any one listed alternative satisfies an OR requirement."""
+    req_low = (a.requirement or "").lower()
+    hint = [o for g in groups if any(o.lower() in req_low for o in g.options) for o in g.options]
+    options = _RC.or_options(a.requirement, hint)
+    hit = _RC.satisfied_option(options, resume_text)
+    if hit:
+        opt, how = hit
+        via = how.split(":", 1)[1] if how.startswith("related:") else None
+        _upgrade(a, "matched", f"{opt}" + (f" (via {_SK.label(via)})" if via else "") + " is named in the resume.",
+                 "related" if via else "strong")
+        if a.match_status == "matched" and not any(_SK.canonical(m) == _SK.canonical(opt) for m in ma.matching_skills):
+            ma.matching_skills.append(opt)
+        return
+    recognised = [o for o in options if _SK.canonical(o) is not None]
+    if (a.match_status in ("matched", "partial") and recognised and len(recognised) == len(options)
+            and all(_SK.is_tool(o) for o in recognised)):
+        a.match_status, a.satisfied, a.evidence_strength, a.evidence_source = "missing", "no", "none", "none"
+        a.what_missing = "None of " + ", ".join(options) + " is named anywhere in the resume."
+
+
+def _check_years(a, resume_text: str) -> None:
+    """Years from the resume's dated roles (education excluded, overlaps merged)."""
+    need = _RC.years_required(a.requirement)
+    if need is None:
+        return
+    have = _RC.total_years(resume_text)
+    if have < need:
+        return
+    named = _SK.find_skills(a.requirement)
+    if not named:
+        _upgrade(a, "matched", f"Dated roles in the resume add up to about {have:g} years.", "strong")
+        return
+    if all(_SK.support_for(_SK.label(k), resume_text) for k in named):
+        _upgrade(a, "partial", f"About {have:g} years of dated experience overall, and "
+                 + ", ".join(_SK.label(k) for k in named) + " is used.", "implicit")
+        if a.match_status == "partial" and not a.what_missing:
+            a.what_missing = "How long each of these was used is not stated."
+
+
+def _check_degree(a, resume_text: str) -> None:
+    verdict = _RC.degree_check(a.requirement, resume_text)
+    if verdict == "matched":
+        _upgrade(a, "matched", "A degree at or above the required level is listed in Education.", "strong")
+    elif verdict == "partial":
+        _upgrade(a, "partial", "A degree at the required level is listed; the field isn't the one named.", "implicit")
+
+
 def _verify_evidence(combined: CombinedAnalysis, resume_text: str) -> None:
     """
     Check the model's per-requirement verdicts against the resume text (mutates).
@@ -981,14 +1051,21 @@ def _verify_evidence(combined: CombinedAnalysis, resume_text: str) -> None:
       via FastAPI) are marked 'implicit': present, but weakly expressed.
     - A concept match whose cited evidence is not actually in the resume is
       softened to partial (the evidence was not attributable).
-    Durations/years, education and OR-groups are left to the model.
+    - OR-groups, years of experience and degree level: requirement_checks.py
+      (upgrade-only, plus the same hallucinated-tool downgrade for OR-groups).
     """
     ma = combined.match_analysis
+    groups = combined.job_analysis.alternative_skill_groups
     for a in ma.requirement_assessments or []:
-        if a.kind in ("experience", "education") or a.logic in ("or_group", "alternative"):
+        if a.kind == "or_group" or a.logic in ("or_group", "alternative"):
+            _check_or_group(a, groups, ma, resume_text)
             continue
-        if re.search(r"\d", a.requirement or ""):
-            continue  # "5+ years of X" is about duration, not presence
+        if a.kind == "education" or _DEGREE_REQ.search(a.requirement or ""):
+            _check_degree(a, resume_text)
+            continue
+        if a.kind == "experience" or _RC.years_required(a.requirement) is not None:
+            _check_years(a, resume_text)  # "5+ years of X" is about duration, not presence
+            continue
         key = _SK.canonical(a.requirement)
         if key is None:
             continue
