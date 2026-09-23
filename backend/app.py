@@ -16,7 +16,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .pipeline import run_full_pipeline, run_full_pipeline_streaming, AnalysisResponse
+from .pipeline import run_full_pipeline, run_full_pipeline_streaming, AnalysisResponse, extract_resume_text_from_bytes
 from .resume_extractor import (
     extract_resume,
     extract_resume_streaming,
@@ -327,5 +327,10 @@ async def tailor_resume_stream(
             detail="Could not read your resume. Please try again.",
         )
 
-    gen = tailor_resume_streaming(structured_resume, job_description, analysis_obj)
+    # Raw PDF text is the fact-check's source of truth alongside the structured copy.
+    try:
+        resume_text = extract_resume_text_from_bytes(contents)
+    except Exception:
+        resume_text = ""
+    gen = tailor_resume_streaming(structured_resume, job_description, analysis_obj, resume_text)
     return _stream_pipeline(request, gen, label="tailor-resume")

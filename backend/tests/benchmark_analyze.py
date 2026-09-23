@@ -137,6 +137,16 @@ def run_old(resume_text, jd):
     return resp, dt, cc.count
 
 
+def evidence_profile(resp) -> dict:
+    """How the verdicts break down after deterministic verification: strong /
+    related / implicit (weakly expressed) / none."""
+    out: dict[str, int] = {}
+    for a in resp.match_analysis.requirement_assessments or []:
+        k = getattr(a, "evidence_strength", "unknown")
+        out[k] = out.get(k, 0) + 1
+    return out
+
+
 def run_new(resume_text, jd):
     """1 call."""
     with CallCounter() as cc:
@@ -181,7 +191,9 @@ def main():
         try:
             new_resp, new_dt, new_calls = run_new(c["resume"], c["jd"])
             new_v = grounding_violations(new_resp, c.get("forbidden_matches", []), c.get("years_trap", False))
-            row["new"] = {"latency_s": round(new_dt, 2), "calls": new_calls, "violations": new_v}
+            row["new"] = {"latency_s": round(new_dt, 2), "calls": new_calls, "violations": new_v,
+                          "prompt_chars": len(P._combined_analysis_prompt(c["jd"], c["resume"])),
+                          "evidence": evidence_profile(new_resp)}
             agg["new_latency"] += new_dt; agg["new_calls"] += new_calls
             agg["new_violations"] += len(new_v)
         except Exception as e:

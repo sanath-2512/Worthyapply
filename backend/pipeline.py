@@ -16,10 +16,14 @@ main.py is a standalone CLI prototype and is not imported from here.
 """
 
 import io
+import re
 
 from typing import Literal
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
+
+from . import grounding as _G
+from . import skills as _SK
 
 
 def _run_agent(prompt: str, response_format):
@@ -184,6 +188,14 @@ class RequirementAssessment(BaseModel):
     condition: str = Field(
         default="",
         description="For conditional requirements: the condition under which it applies.",
+    )
+    evidence_strength: Literal["strong", "related", "implicit", "none", "unknown"] = Field(
+        default="unknown",
+        description="How the resume shows it. strong = named explicitly with real use; "
+        "related = a more specific member of the requirement's family is named (AWS Bedrock "
+        "for 'AWS'); implicit = the work clearly demonstrates it but it is not stated in the "
+        "JD's terms (a FastAPI backend for 'REST APIs') — already present but weakly expressed; "
+        "none = no evidence.",
     )
 
 
@@ -759,6 +771,11 @@ most important output. For each, set:
 - evidence_source: professional | internship | project | freelance | contract |
   coursework | certification | skills_list | summary | none | unknown.
 - what_missing: for partial/cannot_verify, exactly what is shown vs what is still needed.
+- evidence_strength: strong (named, with real use) | related (a MORE SPECIFIC member is named:
+  "AWS Bedrock, S3" proves "AWS", "FastAPI" proves "Python" — never the reverse: "AWS" does
+  not prove "AWS Lambda") | implicit (demonstrated but not in the JD's words: "Built a FastAPI
+  backend" for "REST APIs" — present but weakly expressed) | none. related => matched;
+  implicit => partial or matched. `evidence` must quote the resume text relied on.
 Also populate the legacy fields for compatibility: required_skills, matching_skills (only
 clearly demonstrated), skill_gaps (genuinely unmet REQUIRED items; a satisfied OR-group is
 NOT a gap), recommendation_reason. These three lists must contain ONLY concrete nameable
@@ -781,6 +798,12 @@ Make it ACTIONABLE for the tailoring system, and CONSISTENT with Phase 2:
   and state they must NOT be claimed unless the candidate genuinely has them.
 - warnings: explicit "do not fabricate" notes (e.g. "AWS required but not evidenced — do
   not claim AWS").
+- For each `implicit`/`related` requirement, rewrite the EXISTING bullet in the JD's terms
+  (resume_bullet_improvements) and put the JD term in keywords_to_include.
+- Prefer "Built X using Y to accomplish Z" only when X, Y, Z are all in the original; never
+  add an outcome, metric, scale ("production", "millions") or ownership ("led").
+- priority_improvements: bring relevant experience forward, restate weak evidence in JD
+  terms, tighten vague bullets — never "add skill X" for a gap.
 - CONSISTENCY RULE: never recommend adding/claiming anything Phase 2 marked missing or
   cannot_verify. If match says "5 years Python = cannot_verify", do NOT say "emphasize 5
   years of Python".
@@ -913,22 +936,117 @@ def _reconcile_skill_sets(ja: "JobAnalysis", ma: "MatchAnalysis") -> None:
             if a.evidence:
                 satisfied_norms.add(_norm_skill(a.evidence))
 
+    # Canonicalise the ORIGINAL strings: case-sensitive names ("Go", "TS") don't
+    # survive the lower-casing in _norm_skill.
+    satisfied_raw = list(ma.matching_skills) + [
+        x for a in (ma.requirement_assessments or [])
+        if a.match_status in ("matched", "partial")
+        for x in (a.requirement, a.evidence) if x
+    ]
+    satisfied_keys = {k for k in (_SK.canonical(x) for x in satisfied_raw) if k}
+
     matched: list[str] = []
     gaps: list[str] = []
     for skill in required:
         n = _norm_skill(skill)
-        # matched if the skill (or an alias/option of it) shows up in satisfied evidence
-        if n in satisfied_norms or any(n in sn or sn in n for sn in satisfied_norms if sn):
-            matched.append(skill)
+        key = _SK.canonical(skill)
+        if key is not None:
+            # Known skill: compare canonically, so "Java" never rides on "JavaScript"
+            # and "Postgres" satisfies "PostgreSQL".
+            ok = key in satisfied_keys
         else:
-            gaps.append(skill)
+            # matched if the skill (or an alias/option of it) shows up in satisfied evidence
+            ok = n in satisfied_norms or any(n in sn or sn in n for sn in satisfied_norms if sn)
+        (matched if ok else gaps).append(skill)
 
     ma.required_skills = required
     ma.matching_skills = matched
     ma.skill_gaps = gaps
 
 
-def _postprocess_combined(combined: CombinedAnalysis) -> CombinedAnalysis:
+def _verify_evidence(combined: CombinedAnalysis, resume_text: str) -> None:
+    """
+    Check the model's per-requirement verdicts against the resume text (mutates).
+
+    Uses the skill hierarchy in skills.py, so it only rules on requirements it
+    recognises and otherwise defers to the model:
+
+    - Claimed match on a concrete technology the resume never names (nor any more
+      specific member of its family) -> missing. Catches hallucinated matches and
+      false synonyms (Java vs JavaScript, AWS vs AWS Lambda).
+    - "Missing" when the resume names it (or an alias / a more specific member)
+      -> matched, with evidence_strength 'strong' or 'related'. Catches over-strict
+      verdicts (Postgres = PostgreSQL; AWS Bedrock proves AWS).
+    - Concept requirements evidenced only through a specific technology (REST APIs
+      via FastAPI) are marked 'implicit': present, but weakly expressed.
+    - A concept match whose cited evidence is not actually in the resume is
+      softened to partial (the evidence was not attributable).
+    Durations/years, education and OR-groups are left to the model.
+    """
+    ma = combined.match_analysis
+    for a in ma.requirement_assessments or []:
+        if a.kind in ("experience", "education") or a.logic in ("or_group", "alternative"):
+            continue
+        if re.search(r"\d", a.requirement or ""):
+            continue  # "5+ years of X" is about duration, not presence
+        key = _SK.canonical(a.requirement)
+        if key is None:
+            continue
+        how = _SK.support_for(a.requirement, resume_text)
+        tool = _SK.SKILLS[key].tier == "tool"
+
+        if how is None:
+            if a.match_status in ("matched", "partial"):
+                if tool:
+                    a.match_status, a.satisfied, a.evidence_strength = "missing", "no", "none"
+                    a.evidence_source = "none"
+                    a.what_missing = f"{a.requirement} is not named anywhere in the resume."
+                elif a.match_status == "matched" and a.evidence and not _G.quote_supported(a.evidence, resume_text):
+                    a.match_status, a.satisfied = "partial", "partial"
+            elif a.evidence_strength == "unknown":
+                a.evidence_strength = "none"
+            continue
+
+        via = how.split(":", 1)[1] if how.startswith("related:") else None
+        if a.match_status in ("missing", "cannot_verify"):
+            a.match_status, a.satisfied = "matched", "yes"
+            a.what_missing = ""
+            if not a.evidence:
+                a.evidence = (f"Evidenced by {_SK.label(via)} in the resume." if via
+                              else f"{a.requirement} appears in the resume.")
+        if via is None:
+            if a.evidence_strength in ("unknown", "none"):
+                a.evidence_strength = "strong"
+        else:
+            a.evidence_strength = "implicit" if not tool else "related"
+
+
+def _surface_weak_evidence(combined: CombinedAnalysis, resume_text: str) -> None:
+    """Related / implicit evidence is the cheapest real improvement a resume can get:
+    the experience is there, only the JD's words are missing. Make sure the
+    optimization says so (keywords + a priority item), without inventing anything."""
+    opt = combined.resume_optimization
+    have = {_norm_skill(k) for k in opt.keywords_to_include}
+    notes: list[str] = []
+    for a in combined.match_analysis.requirement_assessments or []:
+        if a.match_status not in ("matched", "partial") or a.evidence_strength not in ("related", "implicit"):
+            continue
+        if _norm_skill(a.requirement) not in have:
+            opt.keywords_to_include.append(a.requirement)
+            have.add(_norm_skill(a.requirement))
+        how = _SK.support_for(a.requirement, resume_text) or ""
+        via = _SK.label(how.split(":", 1)[1]) if how.startswith("related:") else None
+        notes.append(f"{a.requirement} (shown via {via})" if via else a.requirement)
+    if notes:
+        item = ("Say it in the job's words — already evidenced but not named that way: "
+                + ", ".join(notes[:6]) + ".")
+        if item not in opt.priority_improvements:
+            opt.priority_improvements.insert(0, item)
+
+
+def _postprocess_combined(
+    combined: CombinedAnalysis, resume_text: str = "", job_description: str = ""
+) -> CombinedAnalysis:
     """
     Deterministic post-processing applied in Python (no extra LLM call):
 
@@ -939,9 +1057,21 @@ def _postprocess_combined(combined: CombinedAnalysis) -> CombinedAnalysis:
        requirement the match analysis marked missing/cannot_verify. Such unsafe
        recommendations are moved into warnings / missing_or_weak_requirements instead
        of silently claiming the candidate has them.
+
+    With `resume_text` (the live path always passes it) the verdicts are also
+    checked against the resume itself — see _verify_evidence — and suggested bullet
+    rewrites are fact-checked claim by claim (grounding.py).
     """
     ma = combined.match_analysis
     assessments = ma.requirement_assessments or []
+
+    if resume_text:
+        _verify_evidence(combined, resume_text)
+        # The model's flat list can also claim unevidenced technologies.
+        ma.matching_skills = [
+            m for m in ma.matching_skills
+            if not (_SK.is_tool(m) and _SK.support_for(m, resume_text) is None)
+        ]
 
     # Safety net: strip non-skills (dispositions/attitudes/behavioral phrases) from
     # every skill list, in case the model let one slip past the prompt rules.
@@ -1013,6 +1143,36 @@ def _postprocess_combined(combined: CombinedAnalysis) -> CombinedAnalysis:
     opt.keywords_to_include = [
         k for k in opt.keywords_to_include if k.lower().strip() not in missing_terms
     ]
+
+    if resume_text:
+        # Keywords naming a technology the resume doesn't evidence would be stuffing.
+        opt.keywords_to_include = [
+            k for k in opt.keywords_to_include
+            if not (_SK.is_tool(k) and _SK.support_for(k, resume_text) is None)
+        ]
+        # Fact-check each suggested rewrite against its own original bullet: no new
+        # numbers, technologies, scale, outcomes or ownership. JD terms the analysis
+        # verified (related/implicit evidence) are allowed as rewording.
+        licensed = {
+            k for k in (
+                _SK.canonical(a.requirement) for a in assessments
+                if a.match_status in ("matched", "partial")
+                and a.evidence_strength in ("strong", "related", "implicit")
+            ) if k
+        }
+        kept = []
+        for b in opt.resume_bullet_improvements:
+            problems = _G.unsupported_claims(b.improved, b.original, licensed)
+            if b.original and not _G.quote_supported(b.original, resume_text):
+                problems.append("the 'original' text is not in the resume")
+            if problems:
+                note = f"Dropped a suggested rewrite ({problems[0]}): \"{b.improved[:90]}\""
+                if note not in opt.warnings:
+                    opt.warnings.append(note)
+            else:
+                kept.append(b)
+        opt.resume_bullet_improvements = kept
+        _surface_weak_evidence(combined, resume_text)
     return combined
 
 
@@ -1025,7 +1185,7 @@ def run_combined_analysis(job_description: str, resume_text: str) -> CombinedAna
     from .llm import get_structured_llm
     llm = get_structured_llm(CombinedAnalysis, task_type="resume_analysis")
     combined = llm.invoke(_combined_analysis_prompt(job_description, resume_text))
-    return _postprocess_combined(combined)
+    return _postprocess_combined(combined, resume_text=resume_text, job_description=job_description)
 
 
 # ============================================================

@@ -1,0 +1,259 @@
+{
+  "generated_by": "python -m backend.tests.benchmark_grounding",
+  "before": {
+    "analysis": {
+      "cases": [
+        {
+          "id": "A1_related_parent_aws",
+          "issues": [
+            "false_gap:AWS"
+          ],
+          "score": 0
+        },
+        {
+          "id": "A2_hallucinated_kubernetes",
+          "issues": [
+            "false_match:Kubernetes",
+            "unsafe_keyword:Kubernetes"
+          ],
+          "score": 100
+        },
+        {
+          "id": "A3_weakly_expressed_rest",
+          "issues": [
+            "keyword_not_surfaced:REST APIs"
+          ],
+          "score": 50
+        },
+        {
+          "id": "A4_parent_does_not_prove_child",
+          "issues": [
+            "false_match:AWS Lambda"
+          ],
+          "score": 100
+        },
+        {
+          "id": "A5_false_synonym_java",
+          "issues": [
+            "false_match:Java"
+          ],
+          "score": 100
+        },
+        {
+          "id": "A6_true_match_kept",
+          "issues": [],
+          "score": 100
+        },
+        {
+          "id": "A7_concept_match_kept",
+          "issues": [],
+          "score": 100
+        },
+        {
+          "id": "A8_alias_postgres",
+          "issues": [
+            "false_gap:PostgreSQL"
+          ],
+          "score": 0
+        }
+      ],
+      "totals": {
+        "false_matches": 3,
+        "false_gaps": 2,
+        "keyword_misses": 1,
+        "unsafe_keywords": 1,
+        "checks": 13
+      }
+    },
+    "tailoring": {
+      "cases": [
+        {
+          "id": "T1_good_rag_rewrite",
+          "issues": []
+        },
+        {
+          "id": "T2_bad_fabricated_scale_metrics",
+          "issues": [
+            "unsupported_in_output:1M",
+            "unsupported_in_output:40%",
+            "unsupported_in_output:production",
+            "unsupported_in_output:reduced latency",
+            "lost:AWS Bedrock"
+          ]
+        },
+        {
+          "id": "T3_gap_injection_kubernetes",
+          "issues": [
+            "unsupported_in_output:Kubernetes"
+          ]
+        },
+        {
+          "id": "T4_title_inflation",
+          "issues": [
+            "unsupported_in_output:Senior"
+          ]
+        },
+        {
+          "id": "T5_responsibility_escalation",
+          "issues": [
+            "unsupported_in_output:Led"
+          ]
+        },
+        {
+          "id": "T6_good_rest_terminology",
+          "issues": []
+        },
+        {
+          "id": "T7_cross_entry_tech_transfer",
+          "issues": [
+            "misattributed_in_experience:Docker"
+          ]
+        },
+        {
+          "id": "T8_rewrite_drops_real_metric",
+          "issues": [
+            "lost:30%"
+          ]
+        },
+        {
+          "id": "T9_skills_surface_vs_invent",
+          "issues": [
+            "unsupported_in_output:Terraform"
+          ]
+        }
+      ],
+      "totals": {
+        "unsupported_claims_in_output": 9,
+        "good_edits_lost": 2,
+        "checks": 19
+      }
+    },
+    "prompt_size": {
+      "combined_prompt_avg_chars": 8703,
+      "combined_prompt_avg_tokens_est": 2175,
+      "tailor_prompt_chars": 8346,
+      "tailor_prompt_tokens_est": 2086
+    },
+    "heldout_factcheck": {
+      "note": "no fact-check existed before; fabrications passed through unchecked"
+    }
+  },
+  "after": {
+    "analysis": {
+      "cases": [
+        {
+          "id": "A1_related_parent_aws",
+          "issues": [],
+          "score": 50
+        },
+        {
+          "id": "A2_hallucinated_kubernetes",
+          "issues": [],
+          "score": 50
+        },
+        {
+          "id": "A3_weakly_expressed_rest",
+          "issues": [],
+          "score": 50
+        },
+        {
+          "id": "A4_parent_does_not_prove_child",
+          "issues": [],
+          "score": 0
+        },
+        {
+          "id": "A5_false_synonym_java",
+          "issues": [],
+          "score": 0
+        },
+        {
+          "id": "A6_true_match_kept",
+          "issues": [],
+          "score": 100
+        },
+        {
+          "id": "A7_concept_match_kept",
+          "issues": [],
+          "score": 100
+        },
+        {
+          "id": "A8_alias_postgres",
+          "issues": [],
+          "score": 100
+        }
+      ],
+      "totals": {
+        "false_matches": 0,
+        "false_gaps": 0,
+        "keyword_misses": 0,
+        "unsafe_keywords": 0,
+        "checks": 13
+      }
+    },
+    "tailoring": {
+      "cases": [
+        {
+          "id": "T1_good_rag_rewrite",
+          "issues": []
+        },
+        {
+          "id": "T2_bad_fabricated_scale_metrics",
+          "issues": []
+        },
+        {
+          "id": "T3_gap_injection_kubernetes",
+          "issues": []
+        },
+        {
+          "id": "T4_title_inflation",
+          "issues": []
+        },
+        {
+          "id": "T5_responsibility_escalation",
+          "issues": []
+        },
+        {
+          "id": "T6_good_rest_terminology",
+          "issues": []
+        },
+        {
+          "id": "T7_cross_entry_tech_transfer",
+          "issues": []
+        },
+        {
+          "id": "T8_rewrite_drops_real_metric",
+          "issues": []
+        },
+        {
+          "id": "T9_skills_surface_vs_invent",
+          "issues": []
+        }
+      ],
+      "totals": {
+        "unsupported_claims_in_output": 0,
+        "good_edits_lost": 0,
+        "checks": 19
+      }
+    },
+    "prompt_size": {
+      "combined_prompt_avg_chars": 9646,
+      "combined_prompt_avg_tokens_est": 2411,
+      "tailor_prompt_chars": 4998,
+      "tailor_prompt_tokens_est": 1249
+    },
+    "heldout_factcheck": {
+      "legit": 11,
+      "fabricated": 13,
+      "false_positives": 0,
+      "false_negatives": 1,
+      "caught": 12
+    },
+    "heldout_misses": [
+      [
+        "false_negative",
+        "Built a React website for a local bakery to showcase products and take online orders.",
+        []
+      ]
+    ]
+  }
+}

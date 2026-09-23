@@ -120,14 +120,25 @@ The LLM classifies requirements; **Python owns the arithmetic** (`compute_match_
 
 A reconciliation step then rebuilds the required/matched/gap lists (with alias-aware normalization — JS = JavaScript, Postgres = PostgreSQL, etc.) so the three lists always agree.
 
+### Evidence verification
+
+The model classifies each requirement; `backend/skills.py` then checks the verdict against the resume text using a small ESCO-style skill hierarchy (aliases + broader/narrower links):
+
+- **A specific technology proves its family, never the reverse.** "AWS Bedrock, S3" satisfies *AWS*; *AWS* alone does not satisfy *AWS Lambda*. "Postgres" is *PostgreSQL*; "JavaScript" is not *Java*.
+- A claimed match on a concrete technology the resume never names is overruled to **missing**; an over-strict "missing" on something the resume does name is corrected to **matched**.
+- Every assessment carries an `evidence_strength`: `strong` (named), `related` (via a more specific technology), `implicit` (demonstrated but not in the JD's words — e.g. a FastAPI backend for *REST APIs*: present but weakly expressed), or `none`. Related/implicit terms are surfaced as "say it in the job's words" improvements.
+- Durations ("5+ years"), education and OR-groups are left to the model.
+
 ### Tailoring
 
-`backend/resume_tailor.py` sits after analysis and applies its recommendations to the **existing** structured resume as a small **patch** (targeted edits), not a regenerated document — so anything not explicitly edited is preserved exactly:
+`backend/resume_tailor.py` rewrites and reorders the **existing** structured resume as a small **patch**, never a regenerated document:
 
-1. A recommendation checklist is built deterministically from the analysis (bullet improvements, priorities, keywords, missing requirements, matched/required skills).
-2. The agent returns targeted edits: summary/title rewrites, per-entry bullet rewrites, skill reordering/surfacing, and section reordering.
-3. The patch is applied to a deep copy; reorder operations append any indices the model omitted so no entry is ever lost.
-4. Every checklist item is reconciled to an `implemented` / `not_implemented` result, and genuine gaps are returned for honest display.
+1. A checklist and a compact evidence brief are built deterministically from the analysis. Genuine gaps become a **do-not-claim** list — they are reported to the user, never written into the resume.
+2. The agent returns targeted edits: bullet rewrites in the JD's terms, section/skill reordering, summary/title.
+3. **Fact-check** (`backend/grounding.py`): every rewritten bullet, the summary and the title are decomposed into checkable claims — numbers, technologies, scale ("production", "millions"), outcomes ("reduced latency"), ownership ("led", "architected"), seniority — and each must be supported by the original entry it rewrites. Unsupported bullets are dropped; if that would lose original content (a metric or technology), the entry reverts to its original wording. New skills must already be evidenced in the resume.
+4. Recommendations are reported honestly as `implemented` / `not_implemented`, and a `fact_check` report lists what was reverted.
+
+`python -m backend.tests.benchmark_grounding` measures this layer offline on fixed adversarial model outputs (results in `grounding_report.json`); `benchmark_analyze` measures the live LLM path and needs API keys.
 
 ### LLM provider router
 
